@@ -23,7 +23,7 @@ function redactPaths(): string[] {
 }
 
 export const logger = new PinoLogger({
-  name: 'agent',
+  name: 'orchestrator',
   level: 'info',
   redact: {
     paths: redactPaths(),

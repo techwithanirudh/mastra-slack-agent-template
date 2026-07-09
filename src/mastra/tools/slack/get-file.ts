@@ -110,9 +110,9 @@ export const getFileTool = createTool({
         throw new Error(`Failed to merge resumed download: ${result.stderr}`);
       }
     };
-    const fetchFile = (start?: number) =>
-      fetchSlackFile({
-        fetch: (input, init) => {
+    const fetchFile = (start?: number) => {
+      const fetchWithRange = Object.assign(
+        (input: URL | RequestInfo, init?: RequestInit) => {
           const requestHeaders = new Headers(init?.headers);
           if (start !== undefined) {
             requestHeaders.set('range', `bytes=${start}-`);
@@ -123,9 +123,15 @@ export const getFileTool = createTool({
             signal: context.abortSignal,
           });
         },
+        { preconnect: fetch.preconnect }
+      );
+
+      return fetchSlackFile({
+        fetch: fetchWithRange,
         token: env.SLACK_BOT_TOKEN,
         url,
       });
+    };
     const expectedSize =
       info?.size ??
       (await fetch(url, {

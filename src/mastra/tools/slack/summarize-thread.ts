@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { summarizerAgent } from '../../agents/summarizer';
+import { summarizer } from '../../agents/summarizer';
 import { slack } from '../../chat/client';
 import { channelContext } from '../../lib/context';
 import { chatChannelId } from '../../lib/ids';
@@ -47,7 +47,7 @@ export const summarizeThreadTool = createTool({
     const transcript = lines.join('\n');
 
     const prompt = `${instructions ? `${instructions}\n\n` : ''}Summarize this thread clearly and concisely. Preserve decisions, open questions, and action items when present.\n\n${transcript}`;
-    const { text } = await summarizerAgent.generate(prompt);
+    const { text } = await summarizer.generate(prompt);
 
     return {
       success: true,

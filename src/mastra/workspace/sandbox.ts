@@ -5,7 +5,7 @@ import { sandbox as config } from '../config';
 import { createEnv, createNetwork } from './network';
 
 export function createSandbox(threadId: string): E2BSandbox {
-  const id = `agent-${createHash('sha256').update(threadId).digest('hex').slice(0, 32)}`;
+  const id = `workspace-${createHash('sha256').update(threadId).digest('hex').slice(0, 32)}`;
 
   return new E2BSandbox({
     id,

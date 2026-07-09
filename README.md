@@ -1,31 +1,36 @@
-# Agent
+# Mastra Slack Agent
 
-A customizable AI assistant for Slack. The project uses Bun, TypeScript, Mastra
-channels, Chat SDK, Postgres, OpenRouter, and isolated E2B sandboxes.
+A customizable Slack assistant built with Mastra, Bun, and TypeScript. It runs
+as a long-lived Socket Mode process, stores state in Postgres, and gives every
+Slack thread an isolated E2B workspace for command and filesystem tools.
 
-## What is included
+> Note: This template is community-maintained and is not an official Mastra
+> product.
 
-- Slack Socket Mode with mentions, DMs, Assistant threads, streaming, and live
+## Features
+
+- Slack Socket Mode with mentions, DMs, Agent messaging, streaming, and live
   tool activity.
-- One main Mastra agent plus focused research and workspace exploration agents.
-- Per-thread E2B sandboxes for command and filesystem tools.
-- Postgres-backed channel state, memory, and observational memory.
-- Slack, web search, scheduled task, reminder, image, and file tools.
-- Optional AgentMail and GitHub credentials brokered into the sandbox without
-  exposing host tokens.
-- OpenRouter model configuration and Mastra Platform observability.
+- Mastra channels for message flow, history backfill, typing state, and tool
+  display.
+- Postgres-backed channel state and thread-scoped Observational Memory.
+- Per-thread E2B sandboxes for command and filesystem work.
+- Slack, web search, scheduled task, reminder, image generation, and file tools.
+- OpenRouter text models and a native OpenRouter image-model provider.
+- Optional AgentMail and GitHub integrations.
+- Local DuckDB-backed Mastra observability.
 - A small default skill set that is straightforward to replace.
 
 ## Quick start
 
-1. Create a Slack app from [`slack-manifest.yaml`](./slack-manifest.yaml).
+1. Create a Slack app from [`slack-manifest.json`](./slack-manifest.json).
 2. Install [Bun](https://bun.sh/) and run `bun install`.
 3. Copy `.env.example` to `.env` and fill in every required value.
 4. Build your E2B image once with `bun run build:template`.
 5. Start development with `bun run dev`.
 
 The bot uses Socket Mode, so local development does not need an HTTP tunnel.
-The successful connection log is `[agent] online`.
+The successful connection log is `[orchestrator] online`.
 
 ```bash
 git clone https://github.com/techwithanirudh/mastra-slack-agent-template.git
@@ -46,7 +51,11 @@ Start with these guides:
 - [Mastra references and best practices](docs/mastra.md)
 - [Codebase architecture](docs/architecture.md)
 - [Configuration and environment](docs/configuration.md)
+- [Configure AgentMail](docs/configuring-agentmail.md)
+- [Configure GitHub access](docs/configuring-github.md)
 - [Configure models](docs/configuring-models.md)
+- [Memory](docs/memory.md)
+- [Configure sandboxes](docs/sandbox.md)
 - [Add a tool](docs/adding-tools.md)
 - [Connect an MCP server](docs/adding-mcps.md)
 - [Add or remove skills](docs/adding-skills.md)
@@ -64,6 +73,9 @@ The main customization points are:
 | Change tool cards | `src/mastra/chat/tool-display/` |
 | Change sandbox software | `src/mastra/workspace/build-template.ts` |
 | Add runtime skills | `workspace/skills/` |
+
+Storage uses plain `@mastra/pg` for agent memory and channel state.
+Mastra observability is stored in a local DuckDB file.
 
 ## Commands
 

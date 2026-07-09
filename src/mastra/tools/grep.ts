@@ -100,8 +100,7 @@ export const grepTool = createTool({
         })
       ));
     } catch (error) {
-      // rg exits 1 for "no matches" (not an error) and 2 for real errors
-      // (e.g. invalid regex); E2B throws CommandExitError on any non-zero exit.
+      // ripgrep uses exit 1 for no matches and 2 for errors.
       const exit = error as {
         exitCode?: number;
         stdout?: string;

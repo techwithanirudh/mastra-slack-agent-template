@@ -1,15 +1,9 @@
-import { createOpenAI } from '@ai-sdk/openai';
 import { createTool } from '@mastra/core/tools';
 import { generateImage } from 'ai';
 import { z } from 'zod';
 import { images } from '../providers';
 import { resolveE2BSandbox } from '../workspace';
 import { p } from '../workspace/path';
-
-const imageModel = createOpenAI({
-  apiKey: images.apiKey,
-  baseURL: images.url,
-}).image(images.id);
 
 export const generateImageTool = createTool({
   id: 'generate_image',
@@ -45,7 +39,7 @@ export const generateImageTool = createTool({
     }
 
     const result = await generateImage({
-      model: imageModel,
+      model: images,
       prompt,
       n,
       ...(aspectRatio ? { aspectRatio } : {}),

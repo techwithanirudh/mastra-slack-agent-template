@@ -1,19 +1,17 @@
 # Add Or Remove Skills
 
-Skills are Markdown instructions for repeatable processes. This repository has
-two separate skill audiences.
+Skills are Markdown instructions for repeatable processes the Slack agent can
+discover at runtime.
 
 Runtime skills follow Mastra's
 [workspace skills guide](https://mastra.ai/docs/workspace/skills) and the
 [Agent Skills specification](https://agentskills.io/specification).
 
-## Runtime skills
-
 `workspace/skills/` is loaded by the Mastra workspace and is visible to the
 Slack agent. The default set is:
 
 - `agent-browser`: browser automation
-- `agentmail`: email operations through optional brokered credentials
+- `agentmail`: email operations through optional AgentMail access
 - `gh-cli`: GitHub operations
 - `mermaid-diagrams`: diagram syntax and rendering guidance
 
@@ -40,21 +38,10 @@ in `SKILL.md`; move branch-specific reference material into a nearby
 No registry edit is needed. `LocalSkillSource` discovers folders under
 `workspace/skills/`.
 
-## Development skills
-
-`.agents/skills/` helps coding agents work on this repository. `.claude/skills/`
-contains matching symlinks for Claude-compatible discovery. When adding a local
-development skill:
-
-1. Add `.agents/skills/<name>/SKILL.md`.
-2. Add `.claude/skills/<name>` as a relative symlink to
-   `../../.agents/skills/<name>`.
-3. Add third-party source metadata to `skills-lock.json` when applicable.
-
 ## Remove a skill
 
-Delete its folder and every matching symlink or lock entry. Search for prompt,
-sandbox package, and documentation references:
+Delete its folder, then search for prompt, sandbox package, and documentation
+references:
 
 ```bash
 rg -n "skill-name|package-name" .

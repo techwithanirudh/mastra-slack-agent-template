@@ -1,6 +1,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { resolveTarget, targetSchema } from '../../chat/target';
+import { joinChannel } from './utils';
 
 export const postMessageTool = createTool({
   id: 'post_message',
@@ -13,6 +14,9 @@ export const postMessageTool = createTool({
   execute: async ({ type, id, message }) => {
     const target = { type, id };
     try {
+      if (target.type !== 'user') {
+        await joinChannel(target.id);
+      }
       const destination = await resolveTarget(target);
       const sent = await destination.post({ markdown: message });
       return {

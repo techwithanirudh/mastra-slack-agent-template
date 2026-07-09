@@ -9,6 +9,7 @@
     "skipLibCheck": true,
     "noEmit": true,
     "outDir": "dist",
+    "types": ["node", "bun"],
     "paths": {
       "@/*": ["./src/*"]
     },

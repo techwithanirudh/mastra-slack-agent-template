@@ -7,7 +7,6 @@ const commands: Record<string, CommandHandler> = {
   stop,
 };
 
-// Returns true if handled, so callers should skip normal agent processing.
 export async function handleCommand(
   thread: Thread,
   message: Message

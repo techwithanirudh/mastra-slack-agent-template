@@ -42,8 +42,8 @@ it against the installed types.
   centralized so changes remain reviewable.
 - Treat workspaces as enforcement boundaries. User-directed command execution
   belongs in E2B, while model, Slack, and database credentials stay on the host.
-- Persist channel state and memory in Postgres. Use separate databases and
-  Mastra Platform projects for development and production.
+- Persist channel state and memory in Postgres. The template keeps
+  observability in local DuckDB; use shared storage for replicated deployments.
 - Send only the new user message into Observational Memory flows. Do not replay
   a client-side transcript that Mastra already stores.
 - Keep sensitive-data filtering enabled before exporting traces. Review trace

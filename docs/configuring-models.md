@@ -1,7 +1,7 @@
 # Configure Models
 
 Model configuration lives in `src/mastra/providers.ts`. The template keeps it
-in one file so model ids, credentials, retry policy, and role assignments stay
+in one file so model slugs, credentials, retry policy, and role assignments stay
 easy to review.
 
 Mastra model APIs change over time. Use the documentation embedded in the
@@ -20,7 +20,7 @@ variables](https://mastra.ai/models/environment-variables). The
 | `summarizer` | Thread summaries and observational memory |
 | `scout` | Research helper agent |
 | `explorer` | Workspace exploration helper agent |
-| `images` | Direct image generation through the AI SDK |
+| `images` | Image generation through the AI SDK |
 
 These roles can use the same model or different models. A smaller model is
 usually enough for summarization and research, while the orchestrator benefits
@@ -33,17 +33,20 @@ The default text models use an OpenRouter-compatible configuration:
 ```ts
 export const orchestrator: ModelWithRetries[] = [
   {
-    model: openRouter('openrouter/minimax/minimax-m3'),
+    model: openrouter('minimax/minimax-m3'),
     maxRetries: 3,
   },
 ];
 ```
 
-The `openrouter/` prefix selects the gateway. Everything after it is the model
-slug OpenRouter expects. For example:
+Pass the OpenRouter model slug without the Mastra gateway prefix. The local
+`openrouter()` helper prepends `openrouter/` before handing the model to
+Mastra, and also attaches the configured API key and base URL.
+
+For example:
 
 ```ts
-model: openRouter('openrouter/anthropic/claude-sonnet-4.6');
+model: openrouter('anthropic/claude-sonnet-4.6');
 ```
 
 Before changing a model, verify that the slug exists:
@@ -62,11 +65,11 @@ entry fails after its retry policy:
 ```ts
 export const orchestrator: ModelWithRetries[] = [
   {
-    model: openRouter('openrouter/anthropic/claude-sonnet-4.6'),
+    model: openrouter('anthropic/claude-sonnet-4.6'),
     maxRetries: 2,
   },
   {
-    model: openRouter('openrouter/openai/gpt-5.4-mini'),
+    model: openrouter('openai/gpt-5.4-mini'),
     maxRetries: 2,
   },
 ];
@@ -104,8 +107,8 @@ skills, prompts, or committed files.
 ## Tune generation
 
 Global token limits and step limits live in `src/mastra/config.ts`. Agent-level
-generation settings live in `src/mastra/agents/agent.ts` and the helper-agent
-files.
+generation settings live in `src/mastra/agents/orchestrator.ts` and the
+helper-agent files.
 
 Mastra uses `maxOutputTokens`, not `maxTokens`, in model settings:
 
@@ -123,19 +126,26 @@ Settings can also be attached to one fallback entry with `modelSettings` or
 
 ## Image models
 
-`generate-image.ts` creates an OpenAI-compatible image client directly. Its
-model id is the OpenRouter slug without the Mastra gateway prefix:
+`generate-image.ts` calls the AI SDK's `generateImage()` with the model exported
+as `images`. The default uses OpenRouter:
 
 ```ts
-export const images = {
-  id: 'google/gemini-3.1-flash-image',
+export const images = createOpenRouter({
   apiKey: env.OPENROUTER_API_KEY,
-  url: env.OPENROUTER_BASE_URL,
-};
+  baseURL: env.OPENROUTER_BASE_URL,
+  compatibility: 'strict',
+}).imageModel('google/gemini-3.1-flash-image');
 ```
 
-Confirm that the replacement model supports image generation. A text-only model
-will typecheck but fail when called.
+You can replace it with an image model from any provider supported by the AI
+SDK. Install that provider package, construct its image model, and keep
+exporting it as `images`; `generate-image.ts` does not otherwise change. See
+the [AI SDK image generation
+guide](https://ai-sdk.dev/docs/ai-sdk-core/image-generation) for providers,
+models, sizes, aspect ratios, batching, and provider-specific options.
+
+Only pass settings supported by the selected provider and model. A valid model
+id does not guarantee support for `n`, `aspectRatio`, or every output format.
 
 ## Validate changes
 

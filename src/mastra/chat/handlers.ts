@@ -11,16 +11,11 @@ type DefaultHandler = (thread: Thread, message: Message) => Promise<void>;
 
 const actionToken = z.looseObject({
   action_token: z.string().min(1).optional(),
-  assistant_thread: z
-    .looseObject({ action_token: z.string().min(1).optional() })
-    .optional(),
 });
 
 async function captureSearchToken(thread: Thread, raw: unknown): Promise<void> {
   const parsed = actionToken.safeParse(raw);
-  const searchToken = parsed.success
-    ? (parsed.data.action_token ?? parsed.data.assistant_thread?.action_token)
-    : undefined;
+  const searchToken = parsed.success ? parsed.data.action_token : undefined;
   if (searchToken) {
     await thread.setState({ searchToken });
   }
@@ -98,15 +93,7 @@ export async function onSubscribedMessage(
     return;
   }
   if (!isFollowingThread) {
-    // Mastra marks a thread "subscribed" the moment it processes any message
-    // in it, regardless of whether that first mention was at the thread
-    // root (respondOnThreadMessages only gets set for root mentions). So a
-    // one-off mid-thread mention we're NOT actively following can still
-    // leave Mastra's own subscription flag true, which skips its thread
-    // history backfill on every mention after the first, even though we
-    // never actually saw what happened in between. Force a fresh backfill
-    // for this turn by unsubscribing right before handing off; Mastra
-    // re-subscribes on its own once it processes the message.
+    // Force history backfill for one-off mid-thread mentions that Mastra already marked subscribed.
     await thread.unsubscribe().catch(() => undefined);
   }
   await respond(thread, message, defaultHandler);

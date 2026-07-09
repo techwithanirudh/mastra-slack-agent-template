@@ -14,17 +14,18 @@ support.
 - `src/mastra/chat/tool-display/format.ts`: input and output formatting
 - `src/mastra/chat/tool-display/agents.ts`: nested helper-agent activity
 - `src/mastra/config.ts`: truncation limits
-- `src/mastra/agents/agent.ts`: channel adapter registration
+- `src/mastra/agents/orchestrator.ts`: channel adapter registration
 
 ## Disable all tool display
 
-Remove the `toolDisplay` import and property from the Slack adapter:
+Set the Slack adapter to the built-in hidden mode:
 
 ```ts
 adapters: {
   slack: {
     adapter: slack,
     streaming: true,
+    toolDisplay: 'hidden',
     formatError: (error) =>
       `*Oops, something went wrong.*\n\n> ${error.message}`,
   },
@@ -32,9 +33,13 @@ adapters: {
 ```
 
 Tool execution still works. Only the live Slack task cards disappear.
-For the built-in alternative, set `toolDisplay: 'hidden'`. Approval prompts
-have separate behavior, so verify approval-required tools before using hidden
-display in production.
+Approval prompts have separate behavior, so verify approval-required tools
+before using hidden display in production.
+
+`toolDisplay: 'hidden'` applies to the entire Slack adapter. The current
+`ToolDisplayContext` contains the render mode and platform, but not the thread
+or message, so a renderer cannot cleanly select DMs only. DM-specific hiding
+requires filtering Slack stream task chunks or adding thread context upstream.
 
 ## Hide selected tools
 
