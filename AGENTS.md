@@ -1,12 +1,14 @@
-# mastra-slack-agent-template
-
-mastra-slack-agent-template is a customizable AI assistant for Slack. It uses
+This project is a customizable AI assistant for Slack. It uses
 Bun, TypeScript, Mastra channels, Chat SDK's Slack adapter in Socket Mode, E2B
 sandboxes, Postgres, and Mastra observability.
 
 ## CRITICAL: Load the `mastra` skill first
 
 Load the `mastra` skill BEFORE any Mastra work, and read the embedded docs/source in `node_modules/@mastra/*` rather than guessing. Mastra APIs change between versions; cached knowledge is usually wrong.
+
+## Setup: use the `wizard` skill
+
+If a person asks how to set up the project, load the `wizard` skill and generate a wizard tailored to their needs (services to configure, where state lives, optional integrations, whether to commit the script).
 
 ## Mental Model
 
