@@ -4,8 +4,8 @@ The framework boundaries follow Mastra's
 [agent](https://mastra.ai/docs/agents/overview),
 [channels](https://mastra.ai/docs/agents/channels), and
 [workspace](https://mastra.ai/docs/workspace/overview) concepts. See
-[Mastra references and best practices](mastra.md) before changing those
-boundaries.
+[the documentation index](index.md) for framework references before changing
+those boundaries.
 
 ## Request path
 

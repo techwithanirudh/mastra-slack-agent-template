@@ -1,4 +1,4 @@
-# Mastra Slack Agent
+# Mastra Slack Agent Template
 
 A customizable Slack assistant built with Mastra, Bun, and TypeScript. It runs
 as a long-lived Socket Mode process, stores state in Postgres, and gives every
@@ -9,17 +9,21 @@ Slack thread an isolated E2B workspace for command and filesystem tools.
 
 ## Features
 
-- Slack Socket Mode with mentions, DMs, Agent messaging, streaming, and live
-  tool activity.
-- Mastra channels for message flow, history backfill, typing state, and tool
-  display.
-- Postgres-backed channel state and thread-scoped Observational Memory.
-- Per-thread E2B sandboxes for command and filesystem work.
-- Slack, web search, scheduled task, reminder, image generation, and file tools.
-- OpenRouter text models and a native OpenRouter image-model provider.
-- Optional AgentMail and GitHub integrations.
-- Local DuckDB-backed Mastra observability.
-- A small default skill set that is straightforward to replace.
+- Slack-native mentions, DMs, subscribed threads, streaming responses, file
+  handling, workspace search, and full conversation context.
+- One isolated E2B sandbox per Slack thread, with a persistent filesystem,
+  shell commands, background processes, and browser automation.
+- Focused research and code exploration subagents for longer tasks.
+- Recurring scheduled tasks and one-time reminders delivered to Slack.
+- Web research through Exa, AI image generation, and Slack file workflows.
+- Optional dedicated GitHub and AgentMail access with host-side credential
+  brokering.
+- Runtime skills and MCP support for adding repeatable workflows and external
+  services.
+- Postgres-backed channel state, thread-scoped Observational Memory, and local
+  DuckDB observability.
+- Slack support today, with Chat SDK providing a path to Discord, Telegram, and
+  other platforms.
 
 ## Quick start
 
@@ -30,7 +34,7 @@ Slack thread an isolated E2B workspace for command and filesystem tools.
 5. Start development with `bun run dev`.
 
 The bot uses Socket Mode, so local development does not need an HTTP tunnel.
-The successful connection log is `[orchestrator] online`.
+The successful connection log is `[agent] online`.
 
 ```bash
 git clone https://github.com/techwithanirudh/mastra-slack-agent-template.git
@@ -44,38 +48,10 @@ bun run dev
 Do not run multiple local instances against the same Slack app token. Slack
 Socket Mode connections will race and produce confusing behavior.
 
-## Customize
+## Documentation
 
-Start with these guides:
-
-- [Mastra references and best practices](docs/mastra.md)
-- [Codebase architecture](docs/architecture.md)
-- [Configuration and environment](docs/configuration.md)
-- [Configure AgentMail](docs/configuring-agentmail.md)
-- [Configure GitHub access](docs/configuring-github.md)
-- [Configure models](docs/configuring-models.md)
-- [Memory](docs/memory.md)
-- [Configure sandboxes](docs/sandbox.md)
-- [Add a tool](docs/adding-tools.md)
-- [Connect an MCP server](docs/adding-mcps.md)
-- [Add or remove skills](docs/adding-skills.md)
-- [Customize or disable tool display](docs/tool-display.md)
-
-The main customization points are:
-
-| Goal | File |
-|---|---|
-| Change identity and behavior | `src/mastra/prompts/` |
-| Change models | `src/mastra/providers.ts` |
-| Register tools | `src/mastra/tools/base.ts` |
-| Connect MCP servers | `src/mastra/mcp/index.ts` |
-| Change Slack behavior | `src/mastra/chat/` |
-| Change tool cards | `src/mastra/chat/tool-display/` |
-| Change sandbox software | `src/mastra/workspace/build-template.ts` |
-| Add runtime skills | `workspace/skills/` |
-
-Storage uses plain `@mastra/pg` for agent memory and channel state.
-Mastra observability is stored in a local DuckDB file.
+Use the [documentation index](docs/index.md) for setup, architecture, models,
+sandboxes, memory, tools, MCP servers, skills, integrations, and tool display.
 
 ## Commands
 

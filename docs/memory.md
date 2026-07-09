@@ -17,8 +17,8 @@ people, so user-wide memory can accidentally carry details from one shared
 conversation into another. Thread-scoped memory gives the bot continuity inside
 the current work thread without creating a cross-channel profile.
 
-Memory data is persisted through Mastra storage, configured in
-`src/mastra/storage.ts`, which uses PostgreSQL via `DATABASE_URL`.
+Memory data is persisted through the `PostgresStore` configured in
+`src/mastra/index.ts`, using `DATABASE_URL`.
 
 Useful Mastra docs:
 

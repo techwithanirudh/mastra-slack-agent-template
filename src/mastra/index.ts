@@ -59,8 +59,8 @@ orchestrator
     }
     setChat(sdk);
     registerEvents();
-    logger.info('[orchestrator] online');
+    logger.info('[agent] online');
   })
   .catch((error: unknown) =>
-    logger.error('[orchestrator] initialization failed', { error })
+    logger.error('[agent] initialization failed', { error })
   );

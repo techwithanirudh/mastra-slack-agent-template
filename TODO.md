@@ -13,7 +13,6 @@ Source of truth for outstanding template work.
 
 - [ ] Investigate user-wide Observational Memory after the thread-scoped default
   has been tested in Slack.
-- [ ] Improve Slack Assistant starter prompts.
 - [ ] Decide whether `src/mastra/prompts/tools.ts` should remain.
 - [ ] Fix live tool display in Slack Assistant DMs.
 - [ ] Update the default identity and behavior in `src/mastra/prompts/`.
@@ -32,6 +31,11 @@ Source of truth for outstanding template work.
 
 ## Recently completed
 
+- Reworked the README capability overview, added a complete documentation
+  index, removed the standalone Mastra guide, and renamed lifecycle logs to
+  `agent`.
+- Replaced generic Slack starter prompts with sourced research, sandbox file,
+  Slack decision, and recurring schedule workflows.
 - Removed an unused Agent-view context subscription unsupported by Chat SDK,
   documented local DuckDB observability, and clarified tool-display scope.
 - Added public-channel auto-join to `upload_file`.
