@@ -60,5 +60,5 @@ bun run check:spelling
 For code execution, use the existing E2B workspace. Never run user-provided
 commands on the host.
 
-See [Mastra references and best practices](mastra.md) before changing agent,
-workspace, memory, or storage APIs.
+See the [documentation index](index.md) for version-matched Mastra references
+before changing agent, workspace, memory, or storage APIs.

@@ -18,20 +18,20 @@
       "agent_description": "Your AI assistant for Slack. Searches the web, writes and runs code, generates images, browses websites, manages reminders and scheduled tasks, and more.",
       "suggested_prompts": [
         {
-          "title": "Write & run code",
-          "message": "Write and run a Python script that plots a sine wave and send me the image."
+          "title": "Research with sources",
+          "message": "Research the latest developments in AI agents. Compare at least three reliable sources and give me a concise briefing with links."
         },
         {
-          "title": "Search the web",
-          "message": "What are the top AI news stories today?"
+          "title": "Build a useful file",
+          "message": "Create a polished weekly planner as an HTML file, verify it in the sandbox, and upload it here."
         },
         {
-          "title": "Summarize this thread",
-          "message": "Summarize what was discussed in this thread so far."
+          "title": "Find Slack decisions",
+          "message": "Search Slack for decisions made in the last seven days and summarize them with links to the original messages."
         },
         {
-          "title": "Search Slack",
-          "message": "Search Slack for recent decisions about this project."
+          "title": "Schedule a check-in",
+          "message": "Ask me for my timezone, then schedule a weekday 9 AM reminder to review my priorities."
         }
       ]
     }
