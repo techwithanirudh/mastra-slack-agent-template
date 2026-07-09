@@ -3,16 +3,14 @@ import { resolveMemoryThread } from '../../lib/memory';
 import type { CommandHandler } from '../../types';
 
 export const stop: CommandHandler = async (thread, message) => {
-  const { gorkieAgent } = await import('../../agents/gorkie');
-  const memoryThread = await resolveMemoryThread(gorkieAgent, thread.id).catch(
+  const { agent } = await import('../../agents/agent');
+  const memoryThread = await resolveMemoryThread(agent, thread.id).catch(
     () => undefined
   );
   const scope = memoryThread
     ? { threadId: memoryThread.id, resourceId: memoryThread.resourceId }
     : undefined;
-  const activeRunId = scope
-    ? gorkieAgent.getActiveThreadRunId(scope)
-    : undefined;
+  const activeRunId = scope ? agent.getActiveThreadRunId(scope) : undefined;
 
   if (!(scope && activeRunId)) {
     await thread
@@ -29,6 +27,6 @@ export const stop: CommandHandler = async (thread, message) => {
     return;
   }
 
-  gorkieAgent.abortThreadStream(scope);
+  agent.abortThreadStream(scope);
   await thread.post({ markdown: '_Stopped._' });
 };

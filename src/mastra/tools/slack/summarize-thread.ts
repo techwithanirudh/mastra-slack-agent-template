@@ -4,7 +4,7 @@ import { summarizerAgent } from '../../agents/summarizer';
 import { slack } from '../../chat/client';
 import { channelContext } from '../../lib/context';
 import { chatChannelId } from '../../lib/ids';
-import { assertReadableChannel, joinChannel } from './utils';
+import { joinChannel } from './utils';
 
 export const summarizeThreadTool = createTool({
   id: 'summarize_thread',
@@ -30,7 +30,6 @@ export const summarizeThreadTool = createTool({
     }
 
     const channelId = chatChannelId(slack.channelIdFromThreadId(target));
-    await assertReadableChannel({ channelId, currentThreadId: ctx.threadId });
     await joinChannel(channelId);
 
     const result = await slack.fetchMessages(target, {

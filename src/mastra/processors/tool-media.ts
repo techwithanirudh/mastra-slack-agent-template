@@ -7,10 +7,10 @@ interface MediaPart {
 }
 
 /**
- * Every gateway Gorkie routes through (`gateways()`/`opencode()` in
- * `providers.ts`) is OpenAI-compatible, and none of those provider
- * implementations understand `media` parts inside tool-result content — they
- * fall back to JSON.stringify-ing the whole part as text, so the model never
+ * The configured OpenRouter gateway in `providers.ts` is OpenAI-compatible,
+ * and its provider implementation does not understand `media` parts inside
+ * tool-result content. It falls back to JSON.stringify-ing the whole part as
+ * text, so the model never
  * sees the image. Relocating the image into a synthetic user message works
  * everywhere because user-message `file` parts are handled by every provider.
  *

@@ -1,7 +1,7 @@
 {
-  "name": "gorkie",
-  "license": "AGPL-3.0-only",
-  "description": "A helpful AI Slack Bot built with AI SDK.",
+  "name": "mastra-slack-agent-template",
+  "license": "MIT",
+  "description": "A customizable AI assistant for Slack.",
   "type": "module",
   "module": "src/mastra/index.ts",
   "private": true,

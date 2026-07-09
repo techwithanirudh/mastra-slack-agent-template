@@ -50,10 +50,10 @@ const placeholder = Buffer.from(
 export function createEnv(): Record<string, string> {
   return {
     SSL_CERT_FILE: '/usr/lib/ssl/cert.pem',
-    GIT_AUTHOR_NAME: 'gorkie-agent',
-    GIT_AUTHOR_EMAIL: 'gorkie@agentmail.to',
-    GIT_COMMITTER_NAME: 'gorkie-agent',
-    GIT_COMMITTER_EMAIL: 'gorkie@agentmail.to',
+    GIT_AUTHOR_NAME: 'slack-agent',
+    GIT_AUTHOR_EMAIL: 'slack-agent@localhost',
+    GIT_COMMITTER_NAME: 'slack-agent',
+    GIT_COMMITTER_EMAIL: 'slack-agent@localhost',
     ...(env.AGENTMAIL_API_KEY ? { AGENTMAIL_API_KEY: placeholder } : {}),
     ...(env.GITHUB_TOKEN
       ? {

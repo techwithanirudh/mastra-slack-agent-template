@@ -64,17 +64,17 @@ If unavailable because the user did not @mention you, use web search and say you
 
 <tool>
 <name>post_message</name>
-<note>Only for a different destination than the current thread. Your streamed reply already covers this thread, so still write it normally after calling this unless the message warrants skip instead.
+<note>Use for an explicit Slack destination. Your streamed reply already covers the current thread, so avoid posting the same message twice.
 
 Errors:
-channel_not_found means Gorkie isn't a member of that private channel; 
+channel_not_found usually means the bot isn't a member of that private channel;
 not_in_channel means it hasn't joined yet. 
-Either way, tell the user to /invite @gorkie there.</note>
+Either way, tell the user to invite the bot there.</note>
 </tool>
 
 <tool>
 <name>edit_message / delete_message</name>
-<note>Only works for messages recorded by post_message, and only for the same Slack user who originally asked Gorkie to send that message. Prefer { source: "url", url } when the user gives a Slack message link. Otherwise use { source: "id", channelId, messageId }. Do not use these tools for normal streamed replies or messages sent by a different user.</note>
+<note>Prefer { source: "url", url } when the user gives a Slack message link. Otherwise use { source: "id", channelId, messageId }. Slack only permits the bot to edit or delete messages it owns.</note>
 </tool>
 
 <tool>

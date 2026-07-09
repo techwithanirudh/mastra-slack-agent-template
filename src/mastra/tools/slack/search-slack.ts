@@ -91,7 +91,7 @@ export const searchSlackTool = createTool({
       return {
         success: false,
         message:
-          'No fresh Slack search token for this thread. Slack only provides a short-lived one when the user messages or @mentions gorkie, so ask them to mention you and try again.',
+          'No fresh Slack search token for this thread. Slack only provides a short-lived one when the user messages or mentions the bot, so ask them to mention you and try again.',
       };
     }
 
@@ -117,7 +117,7 @@ export const searchSlackTool = createTool({
         return {
           success: false,
           message:
-            'The Slack search token for this thread expired. Ask the @mention gorkie in a new message, then search again.',
+            'The Slack search token for this thread expired. Ask the user to mention the bot in a new message, then search again.',
         };
       }
       throw error;

@@ -1,10 +1,11 @@
 import type { RequestContext } from '@mastra/core/request-context';
-import type { ChannelContext, GorkieRequestContext } from '../types';
+import type { ChannelContext, SlackAgentRequestContext } from '../types';
 
 export function channelContext(
   requestContext?: RequestContext
 ): ChannelContext {
   return (
-    (requestContext as GorkieRequestContext | undefined)?.get('channel') ?? {}
+    (requestContext as SlackAgentRequestContext | undefined)?.get('channel') ??
+    {}
   );
 }

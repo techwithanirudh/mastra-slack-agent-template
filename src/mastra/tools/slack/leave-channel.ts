@@ -9,7 +9,7 @@ import { logger } from '../../lib/logger';
 export const leaveChannelTool = createTool({
   id: 'leave_channel',
   description:
-    'Leave the current channel entirely: Gorkie removes itself as a member and will no longer see or respond to messages there. Use this only when a user explicitly asks Gorkie to leave the channel. Ends the turn immediately, like skip, call it with no other text and no other tool calls in the same response. Not for muting a single thread, use leave_thread for that.',
+    'Leave the current channel entirely: the bot removes itself as a member and will no longer see or respond to messages there. Use this only when a user explicitly asks the bot to leave the channel. Ends the turn immediately, like skip, call it with no other text and no other tool calls in the same response. Not for muting a single thread, use leave_thread for that.',
   inputSchema: z.object({
     reason: z
       .string()

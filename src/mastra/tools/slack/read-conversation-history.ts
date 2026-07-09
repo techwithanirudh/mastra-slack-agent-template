@@ -3,12 +3,12 @@ import { z } from 'zod';
 import { slack } from '../../chat/client';
 import { channelContext } from '../../lib/context';
 import { chatChannelId } from '../../lib/ids';
-import { assertReadableChannel, formatMessage, joinChannel } from './utils';
+import { formatMessage, joinChannel } from './utils';
 
 export const readConversationHistoryTool = createTool({
   id: 'read_conversation_history',
   description:
-    'Read recent raw Slack messages from the current thread, another thread, or public channel history when exact wording matters. For general catch-up on a long thread, use summarize_thread instead so the full transcript stays out of model context. The current conversation is always readable; other channels must be public.',
+    'Read recent raw messages from any Slack channel or thread the bot can access when exact wording matters. For a long thread, prefer summarize_thread so the full transcript stays out of model context.',
   inputSchema: z.object({
     channelId: z
       .string()
@@ -34,10 +34,6 @@ export const readConversationHistoryTool = createTool({
     }
 
     const chId = chatChannelId(resolvedChannelId);
-    await assertReadableChannel({
-      channelId: chId,
-      currentThreadId: ctx.threadId,
-    });
     await joinChannel(chId);
 
     const result = tid

@@ -44,15 +44,15 @@ async function main(): Promise<void> {
         'ln -sf /usr/bin/node /usr/local/bin/node && ln -sf /usr/bin/npm /usr/local/bin/npm && ln -sf /usr/bin/npx /usr/local/bin/npx',
         'npm config --global set prefix /usr/local',
         'python3 -m pip install --no-cache-dir --break-system-packages --no-user --upgrade pip',
-        'python3 -m pip install --no-cache-dir --break-system-packages --no-user pillow matplotlib numpy pandas requests agentmail gTTS SpeechRecognition pydub',
-        'npm install -g agent-browser wrangler',
+        'python3 -m pip install --no-cache-dir --break-system-packages --no-user pillow matplotlib numpy pandas requests agentmail',
+        'npm install -g agent-browser',
         'bash -lc "yes | agent-browser install --with-deps"',
         `chown -R user:user ${config.workdir}`,
       ])
       .setUser('user')
       .runCmd([
-        'git config --global user.name gorkie-agent',
-        'git config --global user.email gorkie@agentmail.to',
+        'git config --global user.name slack-agent',
+        'git config --global user.email slack-agent@localhost',
       ])
       .setWorkdir(config.workdir),
     config.template,

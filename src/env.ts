@@ -10,14 +10,9 @@ export const env = createEnv({
 
     SLACK_BOT_TOKEN: z.string().min(1),
     SLACK_APP_TOKEN: z.string().min(1),
-    OPT_IN_CHANNEL: z.string().optional(),
 
-    HACKCLUB_API_KEY: z.string().min(1),
-
-    OPENROUTER_API_KEY: z.string().min(1).optional(),
+    OPENROUTER_API_KEY: z.string().min(1),
     OPENROUTER_BASE_URL: z.url().default('https://openrouter.ai/api/v1'),
-
-    OPENCODE_API_KEY: z.string().min(1).optional(),
 
     DATABASE_URL: z.url(),
 

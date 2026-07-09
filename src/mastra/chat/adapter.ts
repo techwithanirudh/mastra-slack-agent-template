@@ -2,7 +2,7 @@ import { SlackAdapter } from '@chat-adapter/slack';
 
 const mentionPattern = /<@([A-Z0-9_]+)(?:\|([^<>]+))?>/g;
 
-export class GorkieSlackAdapter extends SlackAdapter {
+export class SlackAgentAdapter extends SlackAdapter {
   protected override async resolveInlineMentions(
     text: string,
     skipSelfMention: boolean

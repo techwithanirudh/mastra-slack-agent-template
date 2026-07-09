@@ -3,12 +3,12 @@ import { z } from 'zod';
 import { slack } from '../../chat/client';
 import { channelContext } from '../../lib/context';
 import { chatChannelId } from '../../lib/ids';
-import { assertReadableChannel, formatMessage, joinChannel } from './utils';
+import { formatMessage, joinChannel } from './utils';
 
 export const listThreadsTool = createTool({
   id: 'list_threads',
   description:
-    'List recent channel threads so you can pick a thread id before reading it. The current channel always works; other channels must be public. Defaults to the current channel.',
+    'List recent threads in any Slack channel the bot can access. Defaults to the current channel.',
   inputSchema: z.object({
     channelId: z
       .string()
@@ -25,10 +25,6 @@ export const listThreadsTool = createTool({
     }
 
     const chId = chatChannelId(id);
-    await assertReadableChannel({
-      channelId: chId,
-      currentThreadId: ctx.threadId,
-    });
     await joinChannel(chId);
 
     const result = await slack.listThreads(chId, { limit, cursor });

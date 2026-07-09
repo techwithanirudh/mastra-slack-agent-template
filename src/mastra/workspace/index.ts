@@ -21,8 +21,8 @@ export async function resolveE2BSandbox(
 }
 
 export const workspace: Workspace = new Workspace({
-  id: 'gorkie-workspace',
-  name: 'gorkie',
+  id: 'agent-workspace',
+  name: 'Agent',
   sandbox: ({ requestContext }) => {
     const { threadId } = channelContext(requestContext);
     if (!threadId) {

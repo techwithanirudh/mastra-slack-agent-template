@@ -1,13 +1,13 @@
 # AgentMail Webhooks
 
-Use webhooks when the user explicitly wants AgentMail to call a public HTTP endpoint for new mail or delivery events. For Gorkie itself, prefer polling or WebSockets unless the user has provided a stable endpoint.
+Use webhooks when the user explicitly wants AgentMail to call a public HTTP endpoint for new mail or delivery events. For the agent itself, prefer polling or WebSockets unless the user has provided a stable endpoint.
 
 ## Create And Manage Webhooks
 
 ```python
 from agentmail import AgentMail
 
-client = AgentMail(api_key="brokered-by-gorkie")
+client = AgentMail(api_key="brokered-by-agent")
 
 webhook = client.webhooks.create(
     url="https://example.com/webhooks/agentmail",
@@ -41,11 +41,11 @@ Never create a webhook to a third-party URL unless the user explicitly approves 
   "event_type": "message.received",
   "event_id": "evt_123",
   "message": {
-    "inbox_id": "gorkie@agentmail.to",
+    "inbox_id": "your-inbox@agentmail.to",
     "thread_id": "thd_123",
     "message_id": "msg_123",
     "from": "Jane Doe <jane@example.com>",
-    "to": ["gorkie@agentmail.to"],
+    "to": ["your-inbox@agentmail.to"],
     "subject": "Question",
     "text": "Body",
     "html": "<p>Body</p>",

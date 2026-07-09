@@ -71,55 +71,43 @@ export const turns = {
         ({ payload }) => !silentTools.has(payload.toolName)
       )
     );
+    const parts: string[] = [];
+
+    if (args.result.steps.length >= agentConfig.maxSteps) {
+      parts.push(`⚠️ hit ${agentConfig.maxSteps}-step cap`);
+    } else if (
+      args.result.finishReason &&
+      !['stop', 'tool-calls'].includes(args.result.finishReason)
+    ) {
+      parts.push(`⚠️ ${args.result.finishReason}`);
+    }
+
+    if (totalTokens > 0) {
+      parts.push(`${compactTokens.format(totalTokens)} tok`);
+    }
+
+    const { startTime } = args.state;
+    if (typeof startTime === 'number') {
+      const elapsedSec = (Date.now() - startTime) / 1000;
+      if (elapsedSec > 0 && outputTokens > 0) {
+        parts.push(`⚡ ${(outputTokens / elapsedSec).toFixed(1)} tok/s`);
+      }
+    }
 
     if (
       threadId &&
       ctx.platform === 'slack' &&
-      (hasTextResponse || hasVisibleToolCall)
+      (hasTextResponse || hasVisibleToolCall) &&
+      parts.length > 0
     ) {
-      const parts: string[] = [];
-
-      if (args.result.steps.length >= agentConfig.maxSteps) {
-        parts.push(`⚠️ hit ${agentConfig.maxSteps}-step cap`);
-      } else if (
-        args.result.finishReason &&
-        !['stop', 'tool-calls'].includes(args.result.finishReason)
-      ) {
-        parts.push(`⚠️ ${args.result.finishReason}`);
-      }
-
-      if (totalTokens > 0) {
-        parts.push(`${compactTokens.format(totalTokens)} tok`);
-      }
-
-      const { startTime } = args.state;
-      if (typeof startTime === 'number') {
-        const elapsedMs = Date.now() - startTime;
-        const elapsedSec = elapsedMs / 1000;
-        if (elapsedSec > 0 && outputTokens > 0) {
-          const tps = (outputTokens / elapsedSec).toFixed(1);
-          parts.push(`⚡ ${tps} tok/s`);
-        }
-      }
-
       await slack
         .postMessage(
           threadId,
           Card({
             children: [
-              CardText(
-                'gorkie may make mistakes. double-check important information.',
-                {
-                  style: 'muted',
-                }
-              ),
-              ...(parts.length > 0
-                ? [
-                    CardText(`\n_${parts.join(' · ')}_`, {
-                      style: 'muted',
-                    }),
-                  ]
-                : []),
+              CardText(`_${parts.join(' · ')}_`, {
+                style: 'muted',
+              }),
             ],
           })
         )
