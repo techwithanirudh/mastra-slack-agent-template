@@ -16,7 +16,7 @@ Use this placeholder:
 ```python
 from agentmail import AgentMail
 
-client = AgentMail(api_key="brokered-by-agent")
+client = AgentMail(api_key="brokered")
 ```
 
 The placeholder is not a secret. It only makes the SDK construct authenticated
@@ -42,7 +42,7 @@ List recent mail:
 ```python
 from agentmail import AgentMail
 
-client = AgentMail(api_key="brokered-by-agent")
+client = AgentMail(api_key="brokered")
 messages = client.inboxes.messages.list(inbox_id="your-inbox@agentmail.to")
 for message in messages:
     print(message)

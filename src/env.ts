@@ -22,9 +22,6 @@ export const env = createEnv({
 
     AGENTMAIL_API_KEY: z.string().min(1).optional(),
     GITHUB_TOKEN: z.string().min(1).optional(),
-
-    MASTRA_PLATFORM_ACCESS_TOKEN: z.string().min(1),
-    MASTRA_PROJECT_ID: z.string().min(1),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

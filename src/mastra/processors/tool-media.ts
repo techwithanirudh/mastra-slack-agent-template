@@ -6,18 +6,6 @@ interface MediaPart {
   type: 'media';
 }
 
-/**
- * The configured OpenRouter gateway in `providers.ts` is OpenAI-compatible,
- * and its provider implementation does not understand `media` parts inside
- * tool-result content. It falls back to JSON.stringify-ing the whole part as
- * text, so the model never
- * sees the image. Relocating the image into a synthetic user message works
- * everywhere because user-message `file` parts are handled by every provider.
- *
- * Scoped to `image/*` only: the OpenAI-compatible user-message converter
- * throws `UnsupportedFunctionalityError` for other media types (e.g. PDF),
- * which would crash the turn instead of merely not working.
- */
 export const relocateToolResultImages: CompatRule = {
   name: 'relocate-tool-result-images',
   applyToPrompt({ prompt }) {

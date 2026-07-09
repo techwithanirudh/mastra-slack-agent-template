@@ -2,7 +2,55 @@ import { SlackAdapter } from '@chat-adapter/slack';
 
 const mentionPattern = /<@([A-Z0-9_]+)(?:\|([^<>]+))?>/g;
 
+interface SlackAppHomeOpenedEvent {
+  channel: string;
+  event_ts: string;
+  tab: string;
+  type: 'app_home_opened';
+  user: string;
+}
+
+interface SlackWebhookPayload {
+  event?: SlackAppHomeOpenedEvent | { type: string };
+  type: string;
+}
+
 export class SlackAgentAdapter extends SlackAdapter {
+  protected override handleAppHomeOpened(
+    event: SlackAppHomeOpenedEvent,
+    ...args: Parameters<SlackAdapter['handleAppHomeOpened']> extends [
+      unknown,
+      ...infer Rest,
+    ]
+      ? Rest
+      : never
+  ): ReturnType<SlackAdapter['handleAppHomeOpened']> {
+    if (event.tab !== 'messages') {
+      return;
+    }
+    return super.handleAppHomeOpened(event, ...args);
+  }
+
+  protected override processEventPayload(
+    payload: SlackWebhookPayload,
+    ...args: Parameters<SlackAdapter['processEventPayload']> extends [
+      unknown,
+      ...infer Rest,
+    ]
+      ? Rest
+      : never
+  ): ReturnType<SlackAdapter['processEventPayload']> {
+    if (
+      payload.event?.type === 'app_home_opened' &&
+      'tab' in payload.event &&
+      payload.event.tab === 'messages'
+    ) {
+      this.handleAppHomeOpened(payload.event, ...args);
+      return;
+    }
+    return super.processEventPayload(payload, ...args);
+  }
+
   protected override async resolveInlineMentions(
     text: string,
     skipSelfMention: boolean

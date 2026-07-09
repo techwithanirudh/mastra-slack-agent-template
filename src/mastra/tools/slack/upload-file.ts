@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { resolveTarget, targetSchema } from '../../chat/target';
 import { channelContext } from '../../lib/context';
 import { resolveE2BSandbox } from '../../workspace';
+import { joinChannel } from './utils';
 
 export const uploadFileTool = createTool({
   id: 'upload_file',
@@ -50,6 +51,9 @@ export const uploadFileTool = createTool({
         : undefined);
     if (!resolved) {
       throw new Error('No current thread to upload to.');
+    }
+    if (resolved.type !== 'user') {
+      await joinChannel(resolved.id);
     }
     const destination = await resolveTarget(resolved);
 

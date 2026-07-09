@@ -7,11 +7,11 @@ Use Python. The sandbox template preinstalls the `agentmail` package.
 ```python
 from agentmail import AgentMail
 
-client = AgentMail(api_key="brokered-by-agent")
+client = AgentMail(api_key="brokered")
 inbox = "your-inbox@agentmail.to"
 ```
 
-`brokered-by-agent` is a placeholder. It is safe to show in code. The real token stays on the host.
+`brokered` is a placeholder. It is safe to show in code. The real token stays on the host.
 Replace the example inbox id with one returned by `client.inboxes.list()`.
 
 ## Inboxes

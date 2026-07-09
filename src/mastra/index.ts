@@ -1,13 +1,15 @@
 import { Mastra } from '@mastra/core/mastra';
+import { MastraCompositeStore } from '@mastra/core/storage';
+import { DuckDBStore } from '@mastra/duckdb';
 import {
-  MastraPlatformExporter,
+  MastraStorageExporter,
   Observability,
   SensitiveDataFilter,
 } from '@mastra/observability';
 import { PostgresStore } from '@mastra/pg';
-import { env } from '../env';
-import { agent } from './agents/agent';
-import { summarizerAgent } from './agents/summarizer';
+import { env } from '@/env';
+import orchestrator from './agents/orchestrator';
+import { summarizer } from './agents/summarizer';
 import { registerEvents } from './chat/events';
 import { setChat } from './chat/instance';
 import { logger } from './lib/logger';
@@ -20,21 +22,24 @@ process.on('uncaughtException', (error: Error) => {
 });
 
 export const mastra = new Mastra({
-  agents: { agent, summarizerAgent },
-  storage: new PostgresStore({
-    id: 'agent-storage',
-    connectionString: env.DATABASE_URL,
+  agents: { orchestrator, summarizer },
+  storage: new MastraCompositeStore({
+    id: 'composite-storage',
+    default: new PostgresStore({
+      id: 'main-storage',
+      connectionString: env.DATABASE_URL,
+    }),
+    domains: {
+      observability: await new DuckDBStore({
+        path: './observability.duckdb',
+      }).getStore('observability'),
+    },
   }),
   observability: new Observability({
     configs: {
       default: {
-        serviceName: 'agent',
-        exporters: [
-          new MastraPlatformExporter({
-            accessToken: env.MASTRA_PLATFORM_ACCESS_TOKEN,
-            projectId: env.MASTRA_PROJECT_ID,
-          }),
-        ],
+        serviceName: 'orchestrator',
+        exporters: [new MastraStorageExporter()],
         spanOutputProcessors: [new SensitiveDataFilter()],
       },
     },
@@ -44,18 +49,18 @@ export const mastra = new Mastra({
 
 await mastra.startWorkers();
 
-agent
+orchestrator
   .getChannels()
   ?.initialize(mastra)
   .then(() => {
-    const sdk = agent.getChannels()?.sdk;
+    const sdk = orchestrator.getChannels()?.sdk;
     if (!sdk) {
       return;
     }
     setChat(sdk);
     registerEvents();
-    logger.info('[agent] online');
+    logger.info('[orchestrator] online');
   })
   .catch((error: unknown) =>
-    logger.error('[agent] initialization failed', { error })
+    logger.error('[orchestrator] initialization failed', { error })
   );

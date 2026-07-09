@@ -19,6 +19,4 @@ runs:
         DATABASE_URL=postgresql://user:pass@localhost:5432/db
         E2B_API_KEY=dummy
         EXA_API_KEY=dummy
-        MASTRA_PLATFORM_ACCESS_TOKEN=dummy
-        MASTRA_PROJECT_ID=dummy
         EOF

@@ -41,7 +41,7 @@ export const sandbox = {
           sandbox.e2b.setTimeout(config.timeout)
         );
       } catch {
-        /* not started */
+        return messages;
       }
     }
     return messages;
@@ -53,7 +53,7 @@ export const sandbox = {
         const sandbox = await resolveE2BSandbox(requestContext);
         await sandbox?.retryOnDead(() => sandbox.e2b.pause());
       } catch {
-        /* not started / already paused */
+        return messages;
       }
     }
     return messages;

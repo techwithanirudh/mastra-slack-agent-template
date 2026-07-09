@@ -21,8 +21,8 @@ export async function resolveE2BSandbox(
 }
 
 export const workspace: Workspace = new Workspace({
-  id: 'agent-workspace',
-  name: 'Agent',
+  id: 'main-workspace',
+  name: 'Workspace',
   sandbox: ({ requestContext }) => {
     const { threadId } = channelContext(requestContext);
     if (!threadId) {
@@ -63,11 +63,7 @@ export const workspace: Workspace = new Workspace({
     [WORKSPACE_TOOLS.FILESYSTEM.DELETE]: { name: 'delete_file' },
     [WORKSPACE_TOOLS.FILESYSTEM.FILE_STAT]: { name: 'file_stat' },
     [WORKSPACE_TOOLS.FILESYSTEM.MKDIR]: { enabled: false },
-    // Disabled: Mastra's built-in grep walks the filesystem one file/dir at a
-    // time over the network with no timeout or concurrency, so it hangs for
-    // minutes (or indefinitely) on anything bigger than a small directory.
-    // Replaced by tools/grep.ts, which shells out to real ripgrep in the
-    // sandbox via execute_command.
+    // The network-bound built-in grep hangs on large trees; use the ripgrep tool instead.
     [WORKSPACE_TOOLS.FILESYSTEM.GREP]: { enabled: false },
     [WORKSPACE_TOOLS.FILESYSTEM.AST_EDIT]: { name: 'ast_edit' },
     [WORKSPACE_TOOLS.SANDBOX.EXECUTE_COMMAND]: { name: 'execute_command' },

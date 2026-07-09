@@ -18,17 +18,20 @@ import { stepCountIs, toolCall } from '../lib/tools';
 import { outputProcessors } from '../processors';
 import { relocateToolResultImages } from '../processors/tool-media';
 import { buildInstructions } from '../prompts';
-import { orchestrator, summarizer } from '../providers';
+import {
+  orchestrator as orchestratorModel,
+  summarizer as summarizerModel,
+} from '../providers';
 import { baseTools } from '../tools/base';
 import { workspace } from '../workspace';
 import { exploreAgent } from './explore';
 import { researchAgent } from './research';
 
-export const agent = new Agent({
+const orchestrator = new Agent({
   id: config.id,
-  name: 'Slack Agent',
+  name: 'Orchestrator',
   instructions: ({ requestContext }) => buildInstructions(requestContext),
-  model: orchestrator,
+  model: orchestratorModel,
   defaultOptions: {
     modelSettings: { maxOutputTokens: config.maxTokens.output },
     stopWhen: [
@@ -57,7 +60,7 @@ export const agent = new Agent({
     options: {
       lastMessages: 20,
       observationalMemory: {
-        model: summarizer,
+        model: summarizerModel,
         observation: {
           modelSettings: { maxOutputTokens: config.maxTokens.output },
         },
@@ -84,3 +87,5 @@ export const agent = new Agent({
     handlers: { onMention, onSubscribedMessage, onDirectMessage },
   },
 });
+
+export default orchestrator;

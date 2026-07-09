@@ -11,21 +11,21 @@ boundaries.
 
 1. Slack sends Socket Mode events to the Chat SDK adapter.
 2. Mastra channels selects a handler from `src/mastra/chat/handlers.ts`.
-3. `agent` builds request-scoped instructions and invokes the configured
+3. `orchestrator` builds request-scoped instructions and invokes the configured
    OpenRouter model.
 4. Tools run either on the host for trusted integrations or inside the
    thread's E2B sandbox for command and filesystem work.
 5. Mastra channels streams text and tool updates back to Slack.
-6. Postgres stores channel state and thread-scoped memory. Mastra Platform
-   receives filtered observability spans.
+6. Postgres stores channel state and agent memory. Local DuckDB stores
+   observability spans.
 
 ## Main modules
 
 | Path | Responsibility |
 |---|---|
 | `src/env.ts` | Validates all host environment variables |
-| `src/mastra/index.ts` | Creates Mastra, storage, observability, and channels |
-| `src/mastra/agents/agent.ts` | Configures the main agent |
+| `src/mastra/index.ts` | Creates Mastra and initializes channels |
+| `src/mastra/agents/orchestrator.ts` | Configures the main Orchestrator agent |
 | `src/mastra/providers.ts` | Defines OpenRouter model roles |
 | `src/mastra/prompts/` | Composes system instructions |
 | `src/mastra/chat/` | Slack adapter, handlers, events, and rendering |
@@ -37,9 +37,7 @@ boundaries.
 ## Trust boundaries
 
 The Mastra agent runs on the host. User-directed commands and filesystem work
-run only inside E2B. Host secrets are not copied into the sandbox. Optional
-AgentMail and GitHub access use E2B network rules that inject authorization
-into matching requests while exposing only placeholder tokens inside the VM.
+run only inside E2B. Host secrets are not copied into the sandbox.
 
 Slack tools can target any channel, thread, DM, user, file, or message the bot
 can access. The template does not add same-channel, public-only, requester, or
@@ -50,6 +48,7 @@ ownership.
 
 - Chat SDK channel state: Postgres through `@chat-adapter/state-pg`.
 - Mastra memory: Postgres through `@mastra/pg`.
+- Mastra observability: local DuckDB through `@mastra/duckdb`.
 - Long conversations: thread-scoped
   [Observational Memory](https://mastra.ai/docs/memory/observational-memory).
 - E2B sessions: one deterministic sandbox id per Slack thread.

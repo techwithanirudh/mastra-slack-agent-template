@@ -50,10 +50,6 @@ async function main(): Promise<void> {
         `chown -R user:user ${config.workdir}`,
       ])
       .setUser('user')
-      .runCmd([
-        'git config --global user.name slack-agent',
-        'git config --global user.email slack-agent@localhost',
-      ])
       .setWorkdir(config.workdir),
     config.template,
     { apiKey: env.E2B_API_KEY, onBuildLogs: defaultBuildLogger() }

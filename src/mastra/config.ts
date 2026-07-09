@@ -1,13 +1,12 @@
 export const sandbox = {
-  template: 'agent-workspace:1.0',
+  template: 'workspace:1.0',
   timeout: 8 * 60 * 1000,
   workdir: '/home/user',
 };
 
 export const agent = {
-  id: 'agent',
-  // Leave room for output tokens and system/tool-schema overhead within the
-  // selected model's context window.
+  id: 'orchestrator',
+  // Reserve context for output and tool schemas.
   maxTokens: { input: 200_000, output: 32_768 },
   maxSteps: 200,
 };
