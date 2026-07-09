@@ -11,7 +11,6 @@ Source of truth for outstanding template work.
 
 ## Customize
 
-- [ ] Simplify the README and every documentation guide into one easy path.
 - [ ] Investigate user-wide Observational Memory after the thread-scoped default
   has been tested in Slack.
 - [ ] Decide whether `src/mastra/prompts/tools.ts` should remain.
@@ -32,6 +31,8 @@ Source of truth for outstanding template work.
 
 ## Recently completed
 
+- Simplified the README and all documentation into short setup, customization,
+  and integration recipes with one clear documentation index.
 - Added a concise required-services overview and rewrote configuration as a
   six-step setup guide without duplicated environment and framework details.
 - Reworked the README capability overview, added a complete documentation

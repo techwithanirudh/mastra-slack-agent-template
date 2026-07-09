@@ -1,39 +1,28 @@
 # Mastra Slack Agent Template
 
-A customizable Slack assistant built with Mastra, Bun, and TypeScript. It runs
-as a long-lived Socket Mode process, stores state in Postgres, and gives every
-Slack thread an isolated E2B workspace for command and filesystem tools.
+A customizable Slack agent built with Mastra, Bun, and TypeScript.
 
 > Note: This template is community-maintained and is not an official Mastra
 > product.
 
 ## Features
 
-- Slack-native mentions, DMs, subscribed threads, streaming responses, file
-  handling, workspace search, and full conversation context.
-- One isolated E2B sandbox per Slack thread, with a persistent filesystem,
-  shell commands, background processes, and browser automation.
-- Focused research and code exploration subagents for longer tasks.
-- Recurring scheduled tasks and one-time reminders delivered to Slack.
-- Web research through Exa, AI image generation, and Slack file workflows.
-- Optional dedicated GitHub and AgentMail access with host-side credential
-  brokering.
-- Runtime skills and MCP support for adding repeatable workflows and external
-  services.
-- Postgres-backed channel state, thread-scoped Observational Memory, and local
-  DuckDB observability.
-- Slack support today, with Chat SDK providing a path to Discord, Telegram, and
-  other platforms.
+- Slack mentions, DMs, threads, streaming, files, and workspace search.
+- Isolated E2B sandboxes with persistent files, shell access, and a browser.
+- Web research, image generation, subagents, reminders, and scheduled tasks.
+- Optional GitHub and AgentMail accounts.
+- Skills and MCP support for adding new capabilities.
+- PostgreSQL memory and local observability.
 
 ## Required services
 
 | Service | Used for |
 |---|---|
-| Slack | Socket Mode events, messages, DMs, and Agent messaging |
-| PostgreSQL | Channel state, memory, subscriptions, and scheduled tasks |
-| OpenRouter | Default text and image models |
-| E2B | Isolated per-thread sandboxes |
-| Exa | Web search and page fetching |
+| Slack | Messages |
+| PostgreSQL | State and memory |
+| OpenRouter | AI models |
+| E2B | Sandboxes |
+| Exa | Web search |
 
 The [configuration guide](docs/configuration.md) walks through creating each
 service and adding its credentials.
@@ -49,9 +38,9 @@ bun run build:template
 bun run dev
 ```
 
-Create the Slack app from [`slack-manifest.json`](./slack-manifest.json) before
-starting the bot. Socket Mode does not need a public HTTP tunnel. The successful
-connection log is `[agent] online`.
+Follow the [setup guide](docs/configuration.md) to create the Slack app and add
+service credentials. The agent is ready when the terminal prints
+`[agent] online`.
 
 Do not run multiple local instances against the same Slack app token. Slack
 Socket Mode connections will race and produce confusing behavior.
