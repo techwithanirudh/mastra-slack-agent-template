@@ -33,7 +33,7 @@ for a workflow that demonstrably needs them. Use GitHub's
 [permission reference](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens)
 to map a failing API operation to the smallest additional permission.
 
-Do not select every permission. A leaked all-permissions token exposes every
+Do NOT select every permission. A leaked all-permissions token exposes every
 resource the account can reach.
 
 ## Classic token fallback
@@ -47,7 +47,7 @@ operation. Set an expiration and select:
 - `read:org` only when organization or team membership lookup is required.
 - `workflow` only when the agent must modify GitHub Actions workflow files.
 
-Do not tick every scope. Classic tokens apply broad scopes across repositories
+Do NOT tick every scope. Classic tokens apply broad scopes across repositories
 the account can access, and GitHub recommends fine-grained tokens instead.
 
 ## 3. Configure the template
