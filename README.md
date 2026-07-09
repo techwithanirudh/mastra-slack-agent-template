@@ -25,16 +25,20 @@ Slack thread an isolated E2B workspace for command and filesystem tools.
 - Slack support today, with Chat SDK providing a path to Discord, Telegram, and
   other platforms.
 
+## Required services
+
+| Service | Used for |
+|---|---|
+| Slack | Socket Mode events, messages, DMs, and Agent messaging |
+| PostgreSQL | Channel state, memory, subscriptions, and scheduled tasks |
+| OpenRouter | Default text and image models |
+| E2B | Isolated per-thread sandboxes |
+| Exa | Web search and page fetching |
+
+The [configuration guide](docs/configuration.md) walks through creating each
+service and adding its credentials.
+
 ## Quick start
-
-1. Create a Slack app from [`slack-manifest.json`](./slack-manifest.json).
-2. Install [Bun](https://bun.sh/) and run `bun install`.
-3. Copy `.env.example` to `.env` and fill in every required value.
-4. Build your E2B image once with `bun run build:template`.
-5. Start development with `bun run dev`.
-
-The bot uses Socket Mode, so local development does not need an HTTP tunnel.
-The successful connection log is `[agent] online`.
 
 ```bash
 git clone https://github.com/techwithanirudh/mastra-slack-agent-template.git
@@ -44,6 +48,10 @@ cp .env.example .env
 bun run build:template
 bun run dev
 ```
+
+Create the Slack app from [`slack-manifest.json`](./slack-manifest.json) before
+starting the bot. Socket Mode does not need a public HTTP tunnel. The successful
+connection log is `[agent] online`.
 
 Do not run multiple local instances against the same Slack app token. Slack
 Socket Mode connections will race and produce confusing behavior.
