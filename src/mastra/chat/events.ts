@@ -1,7 +1,6 @@
 import { logger } from '../lib/logger';
 import { slack } from './client';
 import { chat } from './instance';
-import { acceptOptIn } from './onboarding';
 
 const STARTERS = [
   {
@@ -33,8 +32,6 @@ async function setStarters(channelId: string, threadTs: string): Promise<void> {
 
 export function registerEvents(): void {
   const bot = chat();
-
-  bot.onAction('opt_in_accept', acceptOptIn);
 
   bot.onAssistantThreadStarted((event) =>
     setStarters(event.channelId, event.threadTs)

@@ -1,6 +1,6 @@
 # GitHub CLI Operations
 
-Use `gh` for GitHub. Gorkie should act as the `gorkie-agent` account when host credentials are configured.
+Use `gh` for GitHub. Resolve the authenticated account from the configured host credential.
 
 ## Auth And Identity
 

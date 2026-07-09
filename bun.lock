@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "gorkie",
+      "name": "mastra-slack-agent-template",
       "dependencies": {
         "@ai-sdk/openai": "3",
         "@chat-adapter/slack": "^4.32.0",

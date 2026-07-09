@@ -10,7 +10,7 @@ import { formatTask, scheduledTaskKind } from './utils';
 function assertMinimumInterval(cron: string, timezone?: string): void {
   validateCron(cron, timezone);
   let previous = computeNextFireAt(cron, { timezone });
-  for (let i = 1; i < 5; i += 1) {
+  for (let index = 1; index < 5; index += 1) {
     let fire: number;
     try {
       fire = computeNextFireAt(cron, { timezone, after: previous });
@@ -30,7 +30,7 @@ function assertMinimumInterval(cron: string, timezone?: string): void {
 export const createScheduledTaskTool = createTool({
   id: 'create_scheduled_task',
   description:
-    'Create a recurring scheduled task from a cron expression. Use for recurring tasks only, not one-time reminders. The task runs where it was scheduled: the current Slack thread or DM. A top-level channel message is treated as a thread rooted at that message. Include an IANA timezone when the user schedule is time-of-day sensitive. Never create a schedule that fires more often than every 30 minutes; refuse and offer the nearest 30-minute-or-slower cadence instead.',
+    'Create a recurring scheduled task from a cron expression. Use for recurring tasks only, not one-time reminders. The task runs where it was scheduled: the current Slack thread or DM. A top-level channel message is treated as a thread rooted at that message. Include an IANA timezone when the schedule is time-of-day sensitive. The minimum interval is 15 minutes.',
   inputSchema: z.object({
     task: z
       .string()
@@ -40,7 +40,7 @@ export const createScheduledTaskTool = createTool({
       .string()
       .min(1)
       .describe(
-        'Cron expression for the recurring schedule. Minimum interval: 30 minutes between fires.'
+        'Cron expression for the recurring schedule. Minimum interval: 15 minutes.'
       ),
     timezone: z
       .string()

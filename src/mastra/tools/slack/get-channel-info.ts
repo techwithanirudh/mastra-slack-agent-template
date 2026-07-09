@@ -1,7 +1,8 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
+import { chat } from '../../chat/instance';
 import { channelContext } from '../../lib/context';
-import { assertReadableChannel } from './utils';
+import { chatChannelId } from '../../lib/ids';
 
 export const getChannelInfoTool = createTool({
   id: 'get_channel_info',
@@ -19,10 +20,7 @@ export const getChannelInfoTool = createTool({
     if (!id) {
       throw new Error('No channel to inspect.');
     }
-    const info = await assertReadableChannel({
-      channelId: id,
-      currentThreadId: ctx.threadId,
-    });
+    const info = await chat().channel(chatChannelId(id)).fetchMetadata();
     return {
       success: true,
       id: info.id,

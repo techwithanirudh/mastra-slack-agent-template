@@ -1,25 +1,26 @@
 # AgentMail Core API
 
-Use Python. The sandbox template preinstalls the `agentmail` Python package for Gorkie AgentMail work.
+Use Python. The sandbox template preinstalls the `agentmail` package.
 
 ## Client
 
 ```python
 from agentmail import AgentMail
 
-client = AgentMail(api_key="brokered-by-gorkie")
-inbox = "gorkie@agentmail.to"
+client = AgentMail(api_key="brokered-by-agent")
+inbox = "your-inbox@agentmail.to"
 ```
 
-`brokered-by-gorkie` is a placeholder. It is safe to show in code. The real token stays on the host.
+`brokered-by-agent` is a placeholder. It is safe to show in code. The real token stays on the host.
+Replace the example inbox id with one returned by `client.inboxes.list()`.
 
 ## Inboxes
 
 ```python
 inbox_obj = client.inboxes.create(
-    username="gorkie-test",
+    username="agent-test",
     domain="agentmail.to",
-    display_name="Gorkie Test",
+    display_name="Agent Test",
 )
 
 inboxes = client.inboxes.list()
@@ -27,7 +28,7 @@ current = client.inboxes.get(inbox_id=inbox)
 
 client.inboxes.update(
     inbox_id=inbox,
-    display_name="Gorkie",
+    display_name="Agent Inbox",
 )
 
 client.inboxes.delete(inbox_id="old-inbox@agentmail.to")
@@ -43,10 +44,10 @@ Send a message:
 sent = client.inboxes.messages.send(
     inbox_id=inbox,
     to="recipient@example.com",
-    subject="Hello from Gorkie",
+    subject="Hello from the agent",
     text="Plain text body",
     html="<p>Plain text body</p>",
-    labels=["sent-by-gorkie"],
+    labels=["sent-by-agent"],
 )
 print(sent)
 ```
@@ -197,8 +198,8 @@ messages = client.inboxes.messages.list(
 
 Useful labels:
 
-- `sent-by-gorkie`
-- `drafted-by-gorkie`
+- `sent-by-agent`
+- `drafted-by-agent`
 - `needs-user-review`
 - `replied`
 - `unreplied`

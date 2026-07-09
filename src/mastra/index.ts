@@ -6,11 +6,10 @@ import {
 } from '@mastra/observability';
 import { PostgresStore } from '@mastra/pg';
 import { env } from '../env';
-import { gorkieAgent } from './agents/gorkie';
+import { agent } from './agents/agent';
 import { summarizerAgent } from './agents/summarizer';
 import { registerEvents } from './chat/events';
 import { setChat } from './chat/instance';
-import { buildAllowlist } from './lib/allowed-users';
 import { logger } from './lib/logger';
 
 process.on('unhandledRejection', (error: unknown) => {
@@ -21,15 +20,15 @@ process.on('uncaughtException', (error: Error) => {
 });
 
 export const mastra = new Mastra({
-  agents: { gorkieAgent, summarizerAgent },
+  agents: { agent, summarizerAgent },
   storage: new PostgresStore({
-    id: 'gorkie-storage',
+    id: 'agent-storage',
     connectionString: env.DATABASE_URL,
   }),
   observability: new Observability({
     configs: {
       default: {
-        serviceName: 'gorkie',
+        serviceName: 'agent',
         exporters: [
           new MastraPlatformExporter({
             accessToken: env.MASTRA_PLATFORM_ACCESS_TOKEN,
@@ -45,19 +44,18 @@ export const mastra = new Mastra({
 
 await mastra.startWorkers();
 
-gorkieAgent
+agent
   .getChannels()
   ?.initialize(mastra)
-  .then(async () => {
-    const sdk = gorkieAgent.getChannels()?.sdk;
+  .then(() => {
+    const sdk = agent.getChannels()?.sdk;
     if (!sdk) {
       return;
     }
     setChat(sdk);
     registerEvents();
-    await buildAllowlist();
-    logger.info('[gorkie] online');
+    logger.info('[agent] online');
   })
   .catch((error: unknown) =>
-    logger.error('[gorkie] initialization failed', { error })
+    logger.error('[agent] initialization failed', { error })
   );

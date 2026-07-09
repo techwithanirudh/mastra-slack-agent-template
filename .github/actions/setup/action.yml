@@ -15,10 +15,10 @@ runs:
         cat << 'EOF' > .env
         SLACK_BOT_TOKEN=xoxb-dummy
         SLACK_APP_TOKEN=xapp-dummy
-        HACKCLUB_API_KEY=dummy
+        OPENROUTER_API_KEY=dummy
         DATABASE_URL=postgresql://user:pass@localhost:5432/db
         E2B_API_KEY=dummy
         EXA_API_KEY=dummy
-        LANGFUSE_PUBLIC_KEY=pk-lf-dummy
-        LANGFUSE_SECRET_KEY=sk-lf-dummy
+        MASTRA_PLATFORM_ACCESS_TOKEN=dummy
+        MASTRA_PROJECT_ID=dummy
         EOF

@@ -64,7 +64,7 @@ export const generateImageTool = createTool({
         const ext = image.mediaType.split('/').at(1) ?? 'png';
         const path = p(
           'downloads',
-          `gorkie-image-${batch}-${index + 1}.${ext}`
+          `generated-image-${batch}-${index + 1}.${ext}`
         );
         const buffer = Buffer.from(image.uint8Array);
         await sandbox.retryOnDead(() =>

@@ -1,6 +1,6 @@
 display_information:
-  name: gorkie
-  description: gork but big brain
+  name: Agent
+  description: A customizable AI assistant
   background_color: "#000000"
 
 features:
@@ -9,10 +9,10 @@ features:
     messages_tab_enabled: true
     messages_tab_read_only_enabled: false
   bot_user:
-    display_name: gorkie
+    display_name: Agent
     always_online: true
-  assistant_view:
-    assistant_description: Your AI assistant for Slack. Searches the web, writes and runs code, generates images, browses websites, manages reminders and scheduled tasks, and more.
+  agent_view:
+    agent_description: Your AI assistant for Slack. Searches the web, writes and runs code, generates images, browses websites, manages reminders and scheduled tasks, and more.
 
 oauth_config:
   scopes:
@@ -39,7 +39,6 @@ oauth_config:
       - team:read
       - users.profile:read
       - users:read
-      - emoji:read
 
 settings:
   event_subscriptions:
@@ -48,7 +47,6 @@ settings:
       - app_mention
       - assistant_thread_context_changed
       - assistant_thread_started
-      - member_joined_channel
       - message.channels
       - message.groups
       - message.im

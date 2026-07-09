@@ -1,19 +1,19 @@
 export const sandbox = {
-  template: 'gorkie-workspace:1.2',
+  template: 'agent-workspace:1.0',
   timeout: 8 * 60 * 1000,
   workdir: '/home/user',
 };
 
 export const agent = {
-  id: 'gorkie',
-  // kimi-k2.6's context window is ~256k total, so input must leave room for
-  // maxOutputTokens plus system/tool-schema overhead that isn't counted here.
+  id: 'agent',
+  // Leave room for output tokens and system/tool-schema overhead within the
+  // selected model's context window.
   maxTokens: { input: 200_000, output: 32_768 },
   maxSteps: 200,
 };
 
 export const scheduledTasks = {
-  minInterval: 30 * 60 * 1000,
+  minInterval: 15 * 60 * 1000,
 };
 
 export const toolDisplay = {

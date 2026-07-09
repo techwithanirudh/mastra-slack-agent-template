@@ -7,10 +7,10 @@ Use WebSockets for live inbox events without exposing a public webhook endpoint.
 ```python
 from agentmail import AgentMail, MessageReceivedEvent, Subscribe, Subscribed
 
-client = AgentMail(api_key="brokered-by-gorkie")
+client = AgentMail(api_key="brokered-by-agent")
 
 with client.websockets.connect() as socket:
-    socket.send_subscribe(Subscribe(inbox_ids=["gorkie@agentmail.to"]))
+    socket.send_subscribe(Subscribe(inbox_ids=["your-inbox@agentmail.to"]))
 
     for event in socket:
         if isinstance(event, Subscribed):
@@ -26,12 +26,12 @@ with client.websockets.connect() as socket:
 import asyncio
 from agentmail import AsyncAgentMail, MessageReceivedEvent, Subscribe
 
-client = AsyncAgentMail(api_key="brokered-by-gorkie")
+client = AsyncAgentMail(api_key="brokered-by-agent")
 
 async def main():
     async with client.websockets.connect() as socket:
         await socket.send_subscribe(
-            Subscribe(inbox_ids=["gorkie@agentmail.to"])
+            Subscribe(inbox_ids=["your-inbox@agentmail.to"])
         )
 
         async for event in socket:
@@ -46,10 +46,10 @@ asyncio.run(main())
 ```python
 from agentmail import Subscribe
 
-Subscribe(inbox_ids=["gorkie@agentmail.to"])
+Subscribe(inbox_ids=["your-inbox@agentmail.to"])
 Subscribe(pod_ids=["pod_123"])
 Subscribe(
-    inbox_ids=["gorkie@agentmail.to"],
+    inbox_ids=["your-inbox@agentmail.to"],
     event_types=["message.received", "message.sent"],
 )
 ```
@@ -91,13 +91,13 @@ Common fields on `event.message`:
 from agentmail import AsyncAgentMail, MessageReceivedEvent, Subscribe
 from agentmail.core.api_error import ApiError
 
-client = AsyncAgentMail(api_key="brokered-by-gorkie")
+client = AsyncAgentMail(api_key="brokered-by-agent")
 
 async def main():
     try:
         async with client.websockets.connect() as socket:
             await socket.send_subscribe(
-                Subscribe(inbox_ids=["gorkie@agentmail.to"])
+                Subscribe(inbox_ids=["your-inbox@agentmail.to"])
             )
             async for event in socket:
                 if isinstance(event, MessageReceivedEvent):
