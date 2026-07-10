@@ -60,7 +60,7 @@ If unavailable because the user did not @mention you, use web search and say you
 
 <tool>
 <name>get_slack_file</name>
-<description>Download a Slack-hosted file that is not on the current message, such as an earlier upload, snippet, image, canvas, link, or file id, into the sandbox.</description>
+<description>Download a Slack file (an earlier upload, snippet, image, canvas, or any type) into the sandbox by its Slack file id (e.g. F0123ABCD).</description>
 <note>When saving images, ALWAYS preserve or provide a useful filename extension like .png, .jpg, .jpeg, or .webp so read_file can infer MIME type.</note>
 </tool>
 
@@ -77,6 +77,11 @@ Either way, tell the user to invite the bot there.</note>
 <tool>
 <name>edit_message / delete_message</name>
 <note>Prefer { source: "url", url } when the user gives a Slack message link. Otherwise use { source: "id", channelId, messageId }. Slack only permits the bot to edit or delete messages it owns.</note>
+</tool>
+
+<tool>
+<name>create_canvas / read_canvas / update_canvas</name>
+<note>Canvases are Slack's persistent markdown documents (the channel's Canvas tab). create_canvas fails if the channel already has one, use update_canvas instead. update_canvas replaces the whole canvas by default; pass mode "append" or "prepend" to add content without discarding what's there. Get a canvasId from create_canvas's result or the channel's canvas file id.</note>
 </tool>
 
 <tool>

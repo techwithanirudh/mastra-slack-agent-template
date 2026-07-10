@@ -20,10 +20,9 @@ function throwIfAborted(signal?: AbortSignal): void {
   }
 }
 
-// get_slack_file authenticates downloads with the workspace Slack bot token, so
-// the resolved URL must be a Slack-owned host. Without this guard, an attacker
-// could pass an arbitrary URL and receive the bot token in the Authorization
-// header.
+// The download url comes from Slack's files.info, so it is always Slack-hosted.
+// Assert it anyway before attaching the bot token, to defend against a spoofed
+// files.info response pointing the credential at another host.
 function isSlackHost(rawUrl: string): boolean {
   let host: string;
   try {
@@ -42,12 +41,14 @@ function isSlackHost(rawUrl: string): boolean {
 export const getSlackFileTool = createTool({
   id: 'get_slack_file',
   description:
-    'Download a Slack file (upload, snippet, image, canvas, any type) into the sandbox so you can read or process it. Accepts a Slack file URL, permalink, or file id. Only downloads Slack-hosted files; use fetch_url for arbitrary web URLs. When downloading images, always pass or preserve a useful extension like .png, .jpg, .jpeg, or .webp so read_file can infer the MIME type.',
+    'Download a Slack file (upload, snippet, image, canvas, any type) into the sandbox so you can read or process it. Takes a Slack file id (e.g. F0123ABCD), which you can get from a message attachment or a Slack file permalink. Not for arbitrary web URLs; use fetch_url for those. When downloading images, always pass or preserve a useful extension like .png, .jpg, .jpeg, or .webp so read_file can infer the MIME type.',
   inputSchema: z.object({
     file: z
       .string()
       .min(1)
-      .describe('A Slack file URL, permalink, or file id (e.g. F0123ABCD).'),
+      .describe(
+        'A Slack file id (e.g. F0123ABCD). A Slack file permalink containing the id also works; the id is extracted from it.'
+      ),
     filename: z.string().optional().describe('Optional name to save it as.'),
   }),
   execute: async ({ file, filename }, context) => {
@@ -61,24 +62,26 @@ export const getSlackFileTool = createTool({
     await sandbox.ensureRunning();
 
     const fileId = /(F[A-Z0-9]{6,})/.exec(file)?.[1];
-    const info = fileId
-      ? (await slack.webClient.files.info({ file: fileId })).file
-      : undefined;
-
-    const url =
-      info?.url_private_download ??
-      info?.url_private ??
-      (file.startsWith('http') ? file : undefined);
-    if (!url) {
-      throw new Error(`Could not resolve a download URL for: ${file}`);
-    }
-    if (!isSlackHost(url)) {
+    if (!fileId) {
       throw new Error(
-        `Refusing to download from a non-Slack host: ${url}. get_slack_file only downloads Slack-hosted files; use fetch_url for arbitrary web content.`
+        `Not a Slack file id: "${file}". Pass a Slack file id like F0123ABCD (or a Slack file permalink that contains one). get_slack_file only downloads Slack files; use fetch_url for arbitrary web URLs.`
       );
     }
 
-    const defaultName = info?.name ?? fileId ?? 'slack-file';
+    const info = (await slack.webClient.files.info({ file: fileId })).file;
+    const url = info?.url_private_download ?? info?.url_private;
+    if (!url) {
+      throw new Error(
+        `Could not resolve a download URL for Slack file ${fileId}. It may have been deleted, or the bot may not have access to it.`
+      );
+    }
+    if (!isSlackHost(url)) {
+      throw new Error(
+        `Refusing to download from a non-Slack host: ${url}. get_slack_file only downloads Slack-hosted files (it authenticates with the workspace token).`
+      );
+    }
+
+    const defaultName = info?.name ?? fileId;
     const sanitized = (filename ?? defaultName).replace(/[^\w.-]+/g, '_');
     const name =
       sanitized === '' || sanitized === '.' || sanitized === '..'

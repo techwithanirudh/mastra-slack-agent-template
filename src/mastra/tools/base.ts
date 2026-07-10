@@ -1,4 +1,5 @@
 import { mcpTools } from '../mcp';
+import { canvasTools } from './canvas';
 import { fetchUrlTool } from './fetch-url';
 import { generateImageTool } from './generate-image';
 import { grepTool } from './grep';
@@ -11,6 +12,7 @@ import { slackTools } from './slack';
 export const baseTools = {
   ...slackTools,
   ...scheduledTaskTools,
+  ...canvasTools,
   skip: skipTool,
   search_web: searchWebTool,
   fetch_url: fetchUrlTool,
