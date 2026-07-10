@@ -32,8 +32,8 @@ E2B_API_KEY="..."
 EXA_API_KEY="..."
 ```
 
-`OPENROUTER_BASE_URL` and `NODE_ENV` already have useful defaults. AgentMail
-and authenticated GitHub access are optional.
+`OPENROUTER_BASE_URL` and `NODE_ENV` already have useful defaults. AgentMail,
+authenticated GitHub access, and opencode-go fallback models are optional.
 
 ## 3. Create the Slack app
 
