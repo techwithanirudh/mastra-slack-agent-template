@@ -20,10 +20,29 @@ function throwIfAborted(signal?: AbortSignal): void {
   }
 }
 
-export const getFileTool = createTool({
-  id: 'get_file',
+// get_slack_file authenticates downloads with the workspace Slack bot token, so
+// the resolved URL must be a Slack-owned host. Without this guard, an attacker
+// could pass an arbitrary URL and receive the bot token in the Authorization
+// header.
+function isSlackHost(rawUrl: string): boolean {
+  let host: string;
+  try {
+    host = new URL(rawUrl).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return (
+    host === 'slack.com' ||
+    host.endsWith('.slack.com') ||
+    host === 'slack-files.com' ||
+    host.endsWith('.slack-files.com')
+  );
+}
+
+export const getSlackFileTool = createTool({
+  id: 'get_slack_file',
   description:
-    'Download a Slack file (upload, snippet, image, canvas, any type) into the sandbox so you can read or process it. Accepts a Slack file URL, permalink, or file id. When downloading images, always pass or preserve a useful extension like .png, .jpg, .jpeg, or .webp so read_file can infer the MIME type.',
+    'Download a Slack file (upload, snippet, image, canvas, any type) into the sandbox so you can read or process it. Accepts a Slack file URL, permalink, or file id. Only downloads Slack-hosted files; use fetch_url for arbitrary web URLs. When downloading images, always pass or preserve a useful extension like .png, .jpg, .jpeg, or .webp so read_file can infer the MIME type.',
   inputSchema: z.object({
     file: z
       .string()
@@ -53,9 +72,18 @@ export const getFileTool = createTool({
     if (!url) {
       throw new Error(`Could not resolve a download URL for: ${file}`);
     }
+    if (!isSlackHost(url)) {
+      throw new Error(
+        `Refusing to download from a non-Slack host: ${url}. get_slack_file only downloads Slack-hosted files; use fetch_url for arbitrary web content.`
+      );
+    }
 
     const defaultName = info?.name ?? fileId ?? 'slack-file';
-    const name = (filename ?? defaultName).replace(/[^\w.-]+/g, '_');
+    const sanitized = (filename ?? defaultName).replace(/[^\w.-]+/g, '_');
+    const name =
+      sanitized === '' || sanitized === '.' || sanitized === '..'
+        ? 'slack-file'
+        : sanitized;
     const path = p('downloads', name);
     await sandbox.retryOnDead(() => sandbox.e2b.files.makeDir(p('downloads')));
     const partPath = `${path}.part`;

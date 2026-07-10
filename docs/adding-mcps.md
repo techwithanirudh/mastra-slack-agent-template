@@ -1,13 +1,17 @@
 # Connect an MCP Server
 
-MCP connects the agent to tools provided by another service. The template
-includes Context7 as an example.
+Use MCP when a service already exposes useful tools. The template includes a
+working Context7 example in `src/mastra/mcp/index.ts`.
 
-## Add a server
+Read Mastra's [MCP overview](https://mastra.ai/docs/mcp/overview) and
+[`MCPClient` reference](https://mastra.ai/reference/tools/mcp-client) before
+adding remote transports or advanced server options.
 
-Edit `src/mastra/mcp/index.ts`:
+## 1. Configure the server
 
 ```ts
+import { MCPClient } from '@mastra/mcp';
+
 export const mcpTools = await new MCPClient({
   id: 'mcp',
   servers: {
@@ -19,18 +23,31 @@ export const mcpTools = await new MCPClient({
 }).listTools();
 ```
 
-Add another entry under `servers`, or replace the example. The tools are
-already included by `src/mastra/tools/base.ts`.
+Add another entry to `servers`, or replace `context7` with the service your
+agent needs. Remote transports are supported, but verify the options against
+`node_modules/@mastra/mcp/dist/docs/` because MCP configuration changes between
+Mastra versions.
 
-Put credentials in `src/env.ts` and `.env.example`, never directly in the MCP
-configuration.
+## 2. Register the tools
 
-Run:
+```ts
+import { mcpTools } from '../mcp';
+
+export const baseTools = {
+  // local tools
+  ...mcpTools,
+};
+```
+
+The template already includes this registration in `src/mastra/tools/base.ts`.
+
+## 3. Validate
+
+Run typecheck first. It catches configuration differences between the template
+and examples written for other `@mastra/mcp` versions.
 
 ```bash
 bun run typecheck
 bun run check
+bun run check:spelling
 ```
-
-See Mastra's [MCP guide](https://mastra.ai/docs/mcp/overview) for remote servers
-and authentication.

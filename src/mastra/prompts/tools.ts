@@ -45,7 +45,7 @@ For unfamiliar names, acronyms, projects, links, screenshots, or "what is X" que
 <tool>
 <name>fetch_url</name>
 <description>Fetch the readable content of a specific, known URL.</description>
-<note>Use this for a link someone shared or a URL search_web returned, when you need the actual page content, not just a search result. Not a search tool; you need the exact URL already.</note>
+<note>Use this for public, indexed pages such as docs, blog posts, articles, or GitHub repository pages when you need the actual page content, not just a search result. Do not use it for private URLs, app pages, raw file hosts such as raw.githubusercontent.com, or API/blob download URLs. Not a search tool; you need the exact URL already.</note>
 </tool>
 
 <tool>
@@ -59,8 +59,8 @@ If unavailable because the user did not @mention you, use web search and say you
 </tool>
 
 <tool>
-<name>get_file</name>
-<description>Download a Slack file that is not on the current message, such as an earlier upload, snippet, image, canvas, link, or file id, into the sandbox.</description>
+<name>get_slack_file</name>
+<description>Download a Slack-hosted file that is not on the current message, such as an earlier upload, snippet, image, canvas, link, or file id, into the sandbox.</description>
 <note>When saving images, ALWAYS preserve or provide a useful filename extension like .png, .jpg, .jpeg, or .webp so read_file can infer MIME type.</note>
 </tool>
 

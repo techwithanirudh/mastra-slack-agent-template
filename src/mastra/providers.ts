@@ -14,7 +14,7 @@ function openrouter(id: `${string}/${string}`): ModelConfig {
 
 export const orchestrator: ModelWithRetries[] = [
   {
-    model: openrouter('minimax/minimax-m3'),
+    model: openrouter('moonshotai/kimi-k2.6'),
     maxRetries: 3,
     providerOptions: {
       openrouter: { reasoningEffort: 'medium' },
