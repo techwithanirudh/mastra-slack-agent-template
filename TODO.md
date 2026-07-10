@@ -2,6 +2,29 @@
 
 Source of truth for outstanding template work.
 
+## Process
+
+New capabilities land in `techwithanirudh/gorkie` first, not here. Gorkie is
+the live, daily-driven bot, so it's the actual proving ground: stage a feature
+there, run it against real Slack usage on `dev`, and let it go through a few
+rounds of fixes under real load before it's trusted.
+
+Once a feature has stabilized in gorkie, port it into this template, and in
+the porting strip out everything gorkie-specific: hardcoded bot Slack user
+ids, the `techwithanirudh/gorkie` repo/maintainer attribution, the persona
+and identity wording (`personality.ts`, `core.ts`'s `"You're gorkie"`,
+`slack.ts`'s self-recognition block), and any behavior that assumes gorkie's
+own deployment (single workspace, specific env vars, saved per-user
+instructions). What's left after that strip-down should be the generic,
+reusable form of the feature: same mechanism, no fixed identity or
+deployment baked in.
+
+This means gorkie's `dev` branch is usually ahead of this repo on anything
+non-cosmetic (see the DM-anchor fix, edit/delete-message ownership scoping,
+and guardrails as examples already tracked below), and this repo should
+periodically diff against it to catch drift and pull across whatever has
+matured enough to templatize.
+
 ## Setup
 
 - [ ] Create a Slack app from `slack-manifest.json`.
@@ -21,6 +44,55 @@ Source of truth for outstanding template work.
 - [ ] Revisit whether thread-scoped Observational Memory should stay the Slack
   default after assistant_view DM behavior has been live-tested.
 
+## Bugs
+
+- [x] FIXED: scheduled tasks now render live tool cards in channel threads, not
+  just DMs. Root cause: Slack's native streaming (`chat.startStream`, which
+  carries the structured tool-card chunks) requires `recipient_user_id`/
+  `recipient_team_id` for any non-DM channel. `chat`'s `Thread.handleStream()`
+  only derives those `if (this._currentMessage)`, i.e. from a live inbound
+  message. A scheduled fire wakes an idle thread with no triggering message, so
+  `@chat-adapter/slack`'s `stream()` saw no recipient and fell back to plain
+  post+edit, which drops the `{ chunk, kind: 'stream' }` task-update chunks our
+  `tool-display/format.ts` emits (they only exist inside `chat.appendStream`).
+  DMs were unaffected because `stream()` accepts them on `channel.startsWith('D')`
+  alone. Fix (`src/mastra/chat/adapter.ts`): `SlackAgentAdapter` now stashes the
+  `{ userId, teamId }` recipient per thread from every live non-DM message
+  (persisted in the channels Postgres state via `chat.getState()`, with an
+  in-memory cache to avoid a write per message), and its `stream()` override
+  injects that stashed recipient into the stream options whenever the options
+  lack one and the channel isn't a DM. The schedule-creating message is always
+  a live message in the same thread, so the recipient is present by the time
+  the schedule fires, and it survives restarts. Generic: also covers reminders
+  and any future signal-driven run into a channel thread. Verify live before
+  closing.
+- [ ] Subagent tool cards stop rendering in Slack past 60 steps.
+- [ ] Give clearer live indication that a response is still being processed.
+
+## Roadmap
+
+- [ ] Multi-platform support: add Discord and Telegram through Chat SDK
+  adapters alongside Slack. First priority.
+- [ ] MCP support: firm up the built-in MCP servers, then let end users add
+  their own MCPs.
+- [ ] MCP emoji proxy.
+- [ ] Custom instructions: persistent per-user instructions for persona, tone,
+  style, and how to address them.
+- [ ] Restrict `edit_message` and `delete_message` to messages the bot itself
+  posted. Already implemented on gorkie `dev`. Low priority for now.
+- [ ] Langfuse cost tracking: surface per-user spend (who spends the most).
+- [ ] Topic summaries.
+- [ ] Agent browser via [Cloak Browser](https://github.com/CloakHQ/CloakBrowser/blob/main/examples/integrations/agent_browser.sh)
+  for browser automation tools.
+- [ ] Let users disable the usage/cost footer shown under responses.
+- [ ] Scoped Slack [code mode](https://mastra.ai/docs/agents/code-mode) tool
+  (`createCodeMode`) for multi-step Slack operations in one sandboxed call:
+  post_message, edit/delete own messages, canvas CRUD, pin a message, set
+  channel topic, and a wait tool. Considered a code-mode tool for email too;
+  decided against it for now.
+- [ ] Signal subscriptions: let the agent wait on or react to external events
+  (GitHub events, AgentMail) instead of only polling on a cron schedule.
+
 ## Verify
 
 - [ ] Run `bun run typecheck`.
@@ -30,6 +102,11 @@ Source of truth for outstanding template work.
 
 ## Recently completed
 
+- Moved Slack suggested prompts out of the static `slack-manifest.json` and set
+  them dynamically on `assistant_thread_started`/`assistant_thread_context_changed`
+  via `setSuggestedPrompts`, and title each DM thread after its first user
+  message via `setAssistantTitle` (tracked once per thread with a `titled` state
+  flag). Requires reinstalling the Slack app for the manifest change.
 - Switched the Slack manifest and adapter from `agent_view` back to
   `assistant_view`. The Chat SDK's Slack adapter natively handles
   `assistant_thread_started`/`assistant_thread_context_changed` with a real
