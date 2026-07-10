@@ -50,9 +50,10 @@ Ordered. Work top to bottom, no rush.
   `chat/events.ts` on home-tab open. No gorkie identity. Requires reinstalling
   the Slack app for the manifest change. Later: replace with real settings
   controls (e.g. tool-visibility toggle) once the template has any.
-- [ ] CONFIRM THEN REMOVE: the user asked to remove "the claude md file". Confirm
-  which file (`.claude/CLAUDE.md` is the project's agent-instructions file, not
-  obviously safe to delete) and why before removing.
+- [x] De-duplicate the agent guide: `.claude/CLAUDE.md` was a byte-identical copy
+  of `AGENTS.md`. Replaced the copy with a symlink to `../AGENTS.md` (matching
+  gorkie), so `AGENTS.md` is the single source of truth and `CLAUDE.md` still
+  resolves.
 - [ ] Cross-platform tools: make Slack-only tools work on other platforms where
   the Chat SDK supports it (e.g. `upload_file`, post/edit, reactions). Route
   through the adapter/Chat SDK generic surface instead of `slack.webClient`
