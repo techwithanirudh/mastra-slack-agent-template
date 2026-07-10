@@ -9,6 +9,7 @@ to change that part of the agent.
 - [Models](configuring-models.md): change text or image models.
 - [Sandbox](sandbox.md): customize the E2B environment.
 - [Memory](memory.md): understand conversation memory.
+- [Messaging](messaging.md): ignore messages and steer Slack threads.
 
 ## Add capabilities
 

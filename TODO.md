@@ -31,6 +31,17 @@ Source of truth for outstanding template work.
 
 ## Recently completed
 
+- Changed the Slack initial streaming placeholder to `Working...`.
+- Tuned Slack progress UX so routine tool progress uses tool cards instead of
+  streamed narration.
+- Added fetch URL prompt guidance for public indexed pages only.
+- Compared source and template steering behavior, preserved the thread steering
+  path, and added Agent-view context event handling.
+- Expanded the Messaging guide with thread steering, leaving a thread, and
+  pulling the agent back in with a later mention.
+- Documented the `!stop` Slack command in the Messaging guide.
+- Restored useful MCP and skill documentation details without heavy setup
+  caveats, added a Messaging guide, and linked it from the docs index.
 - Simplified the README and all documentation into short setup, customization,
   and integration recipes with one clear documentation index.
 - Added a concise required-services overview and rewrote configuration as a

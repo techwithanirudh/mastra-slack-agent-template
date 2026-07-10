@@ -74,6 +74,9 @@ const orchestrator = new Agent({
   }),
   channels: {
     state: createPostgresState({ url: env.DATABASE_URL }),
+    chatOptions: {
+      fallbackStreamingPlaceholderText: 'working...',
+    },
     adapters: {
       slack: {
         adapter: slack,

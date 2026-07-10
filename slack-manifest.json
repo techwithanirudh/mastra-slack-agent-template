@@ -68,6 +68,7 @@
   "settings": {
     "event_subscriptions": {
       "bot_events": [
+        "app_context_changed",
         "app_home_opened",
         "app_mention",
         "message.channels",
