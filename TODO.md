@@ -14,13 +14,12 @@ Source of truth for outstanding template work.
 - [ ] Investigate user-wide Observational Memory after the thread-scoped default
   has been tested in Slack.
 - [ ] Decide whether `src/mastra/prompts/tools.ts` should remain.
-- [ ] Fix live tool display in Slack Assistant DMs.
 - [ ] Update the default identity and behavior in `src/mastra/prompts/`.
 - [ ] Choose models and fallbacks in `src/mastra/providers.ts`.
 - [ ] Review enabled Slack tools and OAuth scopes for the target workspace.
 - [ ] Replace or extend the example MCP servers in `src/mastra/mcp/index.ts`.
 - [ ] Revisit whether thread-scoped Observational Memory should stay the Slack
-  default after Agent-view DM behavior has been live-tested.
+  default after assistant_view DM behavior has been live-tested.
 
 ## Verify
 
@@ -31,6 +30,13 @@ Source of truth for outstanding template work.
 
 ## Recently completed
 
+- Switched the Slack manifest and adapter from `agent_view` back to
+  `assistant_view`. The Chat SDK's Slack adapter natively handles
+  `assistant_thread_started`/`assistant_thread_context_changed` with a real
+  `thread_ts` from the moment a DM opens, so this fixes native streaming and
+  live tool display in DMs without the custom reply-anchoring workaround
+  `agent_view` needed. Requires reinstalling the Slack app for the manifest
+  change to take effect.
 - Changed the Slack initial streaming placeholder to `Working...`.
 - Tuned Slack progress UX so routine tool progress uses tool cards instead of
   streamed narration.
