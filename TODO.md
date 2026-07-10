@@ -25,6 +25,44 @@ and guardrails as examples already tracked below), and this repo should
 periodically diff against it to catch drift and pull across whatever has
 matured enough to templatize.
 
+## Active work stream
+
+Ordered. Work top to bottom, no rush.
+
+- [x] Scheduled tasks: stream tool cards into channel threads (recipient stash
+  in `chat/adapter.ts`). Shipped.
+- [x] DM titles: generate with the summarizer from the first exchange, not a
+  naive truncation. Shipped as `processors/title.ts`.
+- [x] Studio thread titles: enable Mastra's built-in `generateTitle` (Memory
+  config in `agents/orchestrator.ts`), pointed at the cheap summarizer model.
+  Covers every platform's Mastra thread title shown in Studio.
+- [x] Remove committed cruft: `tools-dump.md` (a stray Claude Code tool-inventory
+  dump).
+- [ ] DECIDE: keep the Slack-specific `title.ts` processor (sets Slack's
+  assistant History-tab title, which built-in `generateTitle` cannot) or drop it
+  and let Slack show its default first-message title. Built-in already covers
+  Studio; this only adds the Slack-native surface.
+- [ ] Add a `wait` tool (let the agent pause/sleep between steps, e.g. polling a
+  long job or waiting on an external event).
+- [ ] Remove the `schedule_reminder` tool.
+- [ ] App Home tab: enable `home_tab_enabled` and publish a welcome view that
+  explains what the assistant is and does, until real config options exist.
+  Keep the copy generic/templatized (no hardcoded gorkie identity).
+- [ ] CONFIRM THEN REMOVE: the user asked to remove "the claude md file". Confirm
+  which file (`.claude/CLAUDE.md` is the project's agent-instructions file, not
+  obviously safe to delete) and why before removing.
+- [ ] Cross-platform tools: make Slack-only tools work on other platforms where
+  the Chat SDK supports it (e.g. `upload_file`, post/edit, reactions). Route
+  through the adapter/Chat SDK generic surface instead of `slack.webClient`
+  where possible.
+- [ ] Make Mastra Studio a good experience: thread titles (done) plus review
+  what else surfaces well (traces, tool cards, thread lists).
+- [ ] Gorkie regression sweep: full line-by-line diff of template vs gorkie
+  `dev` to find regressions and leftover cruft. Delegated to a background
+  subagent; fold in its findings when they land. Known open item from earlier:
+  `prompts/guardrails.ts` (safety prompt) was dropped from the template's
+  system-prompt assembly.
+
 ## Setup
 
 - [ ] Create a Slack app from `slack-manifest.json`.
