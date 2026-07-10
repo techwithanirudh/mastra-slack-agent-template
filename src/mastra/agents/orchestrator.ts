@@ -59,6 +59,11 @@ const orchestrator = new Agent({
   memory: new Memory({
     options: {
       lastMessages: 20,
+      generateTitle: {
+        model: summarizerModel[0].model,
+        instructions:
+          'Write a specific 3-6 word title for the conversation. Return only the title, no quotes or trailing punctuation.',
+      },
       observationalMemory: {
         model: summarizerModel,
         observation: {
