@@ -45,9 +45,11 @@ Ordered. Work top to bottom, no rush.
 - [ ] Add a `wait` tool (let the agent pause/sleep between steps, e.g. polling a
   long job or waiting on an external event).
 - [ ] Remove the `schedule_reminder` tool.
-- [ ] App Home tab: enable `home_tab_enabled` and publish a welcome view that
-  explains what the assistant is and does, until real config options exist.
-  Keep the copy generic/templatized (no hardcoded gorkie identity).
+- [x] App Home tab: enabled `home_tab_enabled`, re-subscribed `app_home_opened`,
+  and publish a generic welcome view (capabilities + how to start) from
+  `chat/events.ts` on home-tab open. No gorkie identity. Requires reinstalling
+  the Slack app for the manifest change. Later: replace with real settings
+  controls (e.g. tool-visibility toggle) once the template has any.
 - [ ] CONFIRM THEN REMOVE: the user asked to remove "the claude md file". Confirm
   which file (`.claude/CLAUDE.md` is the project's agent-instructions file, not
   obviously safe to delete) and why before removing.
