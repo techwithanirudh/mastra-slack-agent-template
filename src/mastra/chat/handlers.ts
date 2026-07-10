@@ -21,19 +21,6 @@ async function captureSearchToken(thread: Thread, raw: unknown): Promise<void> {
   }
 }
 
-async function maybeTitleDm(thread: Thread, message: Message): Promise<void> {
-  if ((await threadState(thread))?.titled) {
-    return;
-  }
-  const title = rawText(message).replace(/\s+/g, ' ').trim().slice(0, 60);
-  if (!title) {
-    return;
-  }
-  const { channel, threadTs } = slack.decodeThreadId(message.threadId);
-  await slack.setAssistantTitle(channel, threadTs, title);
-  await thread.setState({ titled: true });
-}
-
 function shouldIgnore(message: Message): boolean {
   if (
     message.author.isBot === true ||
@@ -124,8 +111,5 @@ export async function onDirectMessage(
   if (await handleCommand(thread, message)) {
     return;
   }
-  await maybeTitleDm(thread, message).catch((error: unknown) =>
-    logger.error('[handlers] setAssistantTitle failed', { error })
-  );
   await respond(thread, message, defaultHandler);
 }

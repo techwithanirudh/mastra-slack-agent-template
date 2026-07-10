@@ -3,7 +3,9 @@ import type {
   ProcessOutputStepArgs,
 } from '@mastra/core/processors';
 import { Card, CardText } from 'chat';
+import { summarizer } from '../agents/summarizer';
 import { slack } from '../chat/client';
+import { chat } from '../chat/instance';
 import { agent as agentConfig } from '../config';
 import { clip } from '../lib/clip';
 import { channelContext } from '../lib/context';
@@ -13,6 +15,44 @@ const compactTokens = new Intl.NumberFormat('en', {
   compactDisplay: 'short',
   notation: 'compact',
 });
+
+// Name a DM conversation in Slack's assistant History tab once, from the first
+// exchange. Runs after the reply so the title reflects both sides. assistant_view
+// gives DM threads a real thread_ts, so it doubles as the setTitle anchor.
+async function maybeSetDmTitle(
+  args: ProcessOutputResultArgs,
+  ctx: ReturnType<typeof channelContext>
+): Promise<void> {
+  if (!(ctx.isDM && ctx.threadId && args.result.text.trim())) {
+    return;
+  }
+  const { channel, threadTs } = slack.decodeThreadId(ctx.threadId);
+  if (!threadTs) {
+    return;
+  }
+  const state = chat().getState();
+  const titledKey = `dm-titled:${channel}`;
+  if (await state.get<boolean>(titledKey)) {
+    return;
+  }
+  const userText = [...args.messages]
+    .reverse()
+    .find((message) => message.role === 'user')
+    ?.content.parts.flatMap((part) => (part.type === 'text' ? [part.text] : []))
+    .join('\n');
+  if (!userText) {
+    return;
+  }
+  const { text } = await summarizer.generate(
+    `Write a specific 3-6 word title for this Slack conversation. Return only the title, without quotes or trailing punctuation.\n\nUser: ${userText}\nAssistant: ${args.result.text.trim()}`
+  );
+  const title = text.trim().replace(/^["']|["']$/g, '');
+  if (!title) {
+    return;
+  }
+  await slack.setAssistantTitle(channel, threadTs, title);
+  await state.set(titledKey, true);
+}
 
 export const turns = {
   id: 'turns',
@@ -65,6 +105,15 @@ export const turns = {
     });
 
     const hasTextResponse = args.result.text.trim().length > 0;
+    if (hasTextResponse && ctx.platform === 'slack') {
+      maybeSetDmTitle(args, ctx).catch((error: unknown) =>
+        logger.warn('[chat] failed to set DM conversation title', {
+          threadId,
+          error,
+        })
+      );
+    }
+
     const silentTools = new Set(['skip', 'add_reaction', 'remove_reaction']);
     const hasVisibleToolCall = args.result.steps.some((step) =>
       (step.toolResults ?? []).some(
