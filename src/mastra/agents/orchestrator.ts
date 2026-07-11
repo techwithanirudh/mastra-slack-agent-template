@@ -3,6 +3,7 @@ import { Agent } from '@mastra/core/agent';
 import {
   ProviderHistoryCompat,
   TokenLimiterProcessor,
+  ToolSearchProcessor,
 } from '@mastra/core/processors';
 import { Memory } from '@mastra/memory';
 import { env } from '@/env';
@@ -22,7 +23,7 @@ import {
   orchestrator as orchestratorModel,
   summarizer as summarizerModel,
 } from '../providers';
-import { baseTools } from '../tools/base';
+import { baseTools, toolSearchTools } from '../tools/base';
 import { workspace } from '../workspace';
 import { executeAgent } from './execute';
 import { exploreAgent } from './explore';
@@ -44,6 +45,14 @@ const orchestrator = new Agent({
   },
   workspace,
   inputProcessors: [
+    new ToolSearchProcessor({
+      tools: toolSearchTools,
+      storage: 'context',
+      search: {
+        topK: 4,
+        autoLoad: true,
+      },
+    }),
     new TokenLimiterProcessor({
       limit: config.maxTokens.input,
       trimMode: 'contiguous',
@@ -81,6 +90,7 @@ const orchestrator = new Agent({
     },
   }),
   channels: {
+    tools: false,
     state: createPostgresState({ url: env.DATABASE_URL }),
     chatOptions: {
       fallbackStreamingPlaceholderText: 'working...',

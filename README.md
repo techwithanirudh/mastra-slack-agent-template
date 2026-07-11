@@ -9,7 +9,7 @@ A customizable Slack agent built with Mastra, Bun, and TypeScript.
 
 - Slack mentions, DMs, threads, streaming, files, and workspace search.
 - Isolated E2B sandboxes with persistent files, shell access, and a browser.
-- Web research, image generation, subagents, reminders, and scheduled tasks.
+- Web research, image generation, subagents, and scheduled tasks.
 - Optional GitHub and AgentMail accounts.
 - Skills and MCP support for adding new capabilities.
 - PostgreSQL memory and local observability.

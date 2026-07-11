@@ -1,29 +1,40 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { resolveTarget, targetSchema } from '../../chat/target';
+import { channelContext } from '../../lib/context';
 import { joinChannel } from './utils';
 
 export const postMessageTool = createTool({
   id: 'post_message',
   description:
-    'Post a markdown message to any Slack thread, channel, or user the bot can access. Your streamed reply already covers the current thread, so use this for an explicit destination.',
+    'Post a markdown message to the current Slack thread or to a specific thread, channel, or user the bot can access.',
   inputSchema: z.object({
-    ...targetSchema.shape,
+    target: targetSchema
+      .optional()
+      .describe('Optional destination. Defaults to the current thread.'),
     message: z.string().min(1).describe('Markdown message body.'),
   }),
-  execute: async ({ type, id, message }) => {
-    const target = { type, id };
+  execute: async ({ target, message }, context) => {
+    const ctx = channelContext(context?.requestContext);
+    const resolved =
+      target ??
+      (ctx.threadId
+        ? { type: 'thread' as const, id: ctx.threadId }
+        : undefined);
+    if (!resolved?.id) {
+      throw new Error('No Slack destination for post_message.');
+    }
     try {
-      if (target.type !== 'user') {
-        await joinChannel(target.id);
+      if (resolved.type !== 'user') {
+        await joinChannel(resolved.id);
       }
-      const destination = await resolveTarget(target);
+      const destination = await resolveTarget(resolved);
       const sent = await destination.post({ markdown: message });
       return {
         success: true,
         messageId: sent.id,
         threadId: sent.threadId,
-        message: `Posted to ${target.type} ${target.id}.`,
+        message: `Posted to ${resolved.type} ${resolved.id}.`,
       };
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);

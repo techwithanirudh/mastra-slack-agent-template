@@ -1,11 +1,14 @@
 import { Agent } from '@mastra/core/agent';
-import { TokenLimiterProcessor } from '@mastra/core/processors';
+import {
+  TokenLimiterProcessor,
+  ToolSearchProcessor,
+} from '@mastra/core/processors';
 import { InMemoryStore } from '@mastra/core/storage';
 import { Memory } from '@mastra/memory';
 import { agent as config } from '../config';
 import { stepCountIs } from '../lib/tools';
 import { scout } from '../providers';
-import { baseTools } from '../tools/base';
+import { baseTools, toolSearchTools } from '../tools/base';
 import { workspace } from '../workspace';
 
 export const researchAgent = new Agent({
@@ -20,6 +23,14 @@ export const researchAgent = new Agent({
   workspace,
   tools: baseTools,
   inputProcessors: [
+    new ToolSearchProcessor({
+      tools: toolSearchTools,
+      storage: 'context',
+      search: {
+        topK: 4,
+        autoLoad: true,
+      },
+    }),
     new TokenLimiterProcessor({
       limit: config.maxTokens.input,
       trimMode: 'contiguous',
@@ -30,6 +41,7 @@ export const researchAgent = new Agent({
       'skill',
       'skill_search',
       'skill_read',
+      'search_tools',
       'search_web',
       'fetch_url',
       'search_slack',

@@ -2,6 +2,7 @@ import { Agent } from '@mastra/core/agent';
 import {
   ProviderHistoryCompat,
   TokenLimiterProcessor,
+  ToolSearchProcessor,
 } from '@mastra/core/processors';
 import { InMemoryStore } from '@mastra/core/storage';
 import { Memory } from '@mastra/memory';
@@ -10,7 +11,7 @@ import { stepCountIs } from '../lib/tools';
 import { sandbox } from '../processors/sandbox';
 import { relocateToolResultImages } from '../processors/tool-media';
 import { explorer } from '../providers';
-import { baseTools } from '../tools/base';
+import { baseTools, toolSearchTools } from '../tools/base';
 import { workspace } from '../workspace';
 
 export const exploreAgent = new Agent({
@@ -25,6 +26,14 @@ export const exploreAgent = new Agent({
   workspace,
   tools: baseTools,
   inputProcessors: [
+    new ToolSearchProcessor({
+      tools: toolSearchTools,
+      storage: 'context',
+      search: {
+        topK: 4,
+        autoLoad: true,
+      },
+    }),
     new TokenLimiterProcessor({
       limit: config.maxTokens.input,
       trimMode: 'contiguous',
@@ -38,6 +47,7 @@ export const exploreAgent = new Agent({
       'skill',
       'skill_search',
       'skill_read',
+      'search_tools',
       'read_file',
       'list_files',
       'grep',

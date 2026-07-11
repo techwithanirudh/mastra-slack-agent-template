@@ -53,6 +53,27 @@ async function main(): Promise<void> {
         'python3 -m pip install --no-cache-dir --break-system-packages --no-user pillow matplotlib numpy pandas requests agentmail',
         'npm install -g agent-browser',
         'bash -lc "yes | agent-browser install --with-deps"',
+        'python3 -m pip install --no-cache-dir --break-system-packages --no-user cloakbrowser',
+        // CloakBrowser supplies a stealth Chromium binary; agent-browser needs its
+        // path and launch args as env vars on every invocation. Both are resolved
+        // dynamically (the binary auto-downloads on first use), so they can't be
+        // baked in as static template env vars. Shadow the real agent-browser with
+        // a wrapper that resolves them and execs through, so every invocation
+        // (however execute_command runs it) picks them up without relying on
+        // shell profile sourcing.
+        'mv /usr/local/bin/agent-browser /usr/local/bin/agent-browser-real',
+        `cat > /usr/local/bin/agent-browser <<'CLOAKBROWSER_WRAPPER'
+#!/bin/bash
+BINARY_PATH=$(python3 -c "from cloakbrowser.download import ensure_binary; print(ensure_binary())")
+STEALTH_ARGS=$(python3 -c "from cloakbrowser.config import get_default_stealth_args; print(','.join(get_default_stealth_args()))")
+export AGENT_BROWSER_EXECUTABLE_PATH="$BINARY_PATH"
+export AGENT_BROWSER_ARGS="$STEALTH_ARGS"
+exec agent-browser-real "$@"
+CLOAKBROWSER_WRAPPER`,
+        'chmod +x /usr/local/bin/agent-browser',
+        // Pre-download the stealth binary at build time so the first live
+        // sandbox call does not pay for it.
+        'python3 -c "from cloakbrowser.download import ensure_binary; ensure_binary()"',
         `chown -R user:user ${config.workdir}`,
       ])
       .setUser('user')

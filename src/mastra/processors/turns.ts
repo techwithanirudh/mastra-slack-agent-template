@@ -65,7 +65,7 @@ export const turns = {
     });
 
     const hasTextResponse = args.result.text.trim().length > 0;
-    const silentTools = new Set(['skip', 'add_reaction', 'remove_reaction']);
+    const silentTools = new Set(['skip', 'react']);
     const hasVisibleToolCall = args.result.steps.some((step) =>
       (step.toolResults ?? []).some(
         ({ payload }) => !silentTools.has(payload.toolName)
