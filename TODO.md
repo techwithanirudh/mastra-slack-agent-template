@@ -43,6 +43,8 @@ instead of a manual diff every time.
 - [ ] Replace or extend the example MCP servers in `src/mastra/mcp/index.ts`.
 - [ ] Revisit whether thread-scoped Observational Memory should stay the Slack
   default after assistant_view DM behavior has been live-tested.
+- [ ] Test the `wait` feature in a real Slack thread, including delayed resume
+  behavior and whether the resumed message renders in the expected place.
 
 ## Bugs
 
@@ -98,27 +100,63 @@ instead of a manual diff every time.
   (GitHub events, AgentMail) instead of only polling on a cron schedule. `wait`
   (shipped, see Recently completed) covers "pause and resume later"; this is
   the "react to an external trigger" half.
-- [ ] Background subagents. RESEARCHED, possible but needs a bridge, not yet
-  implemented. Mastra's `backgroundTasks` system dispatches subagent
-  delegations as background tool calls transparently (confirmed via source);
-  requires enabling `backgroundTasks` on the `Mastra` instance (new config, not
-  currently set) and opting the subagent in via `backgroundTasks.tools` on the
-  orchestrator. The catch, confirmed by reading `chunk-JGDMZZAO.js`: background
-  task completion only flows into whichever stream is actively consuming
-  `agent.stream()` at the time, and re-invocation on completion only happens
-  automatically "if you use `stream()` with the `untilIdle` option" per
-  Mastra's own docs. `AgentChannels` (the Slack integration) never sets
-  `untilIdle` anywhere, so a background subagent's result would write to
-  memory and then silently vanish from the user's view, nothing would
-  proactively post it back to Slack. Fix: register `backgroundTasks.onTaskComplete`
-  / `onTaskFailed` on the `Mastra` instance and, from there, call
-  `agent.sendSignal(..., { ifIdle: { behavior: 'wake' } })` on the task's
-  `threadId`/`resourceId` (`BackgroundTask` carries both). This is the exact
-  same wake pattern `wait.ts` already uses and that this session verified
-  renders correctly in Slack, just triggered from task completion instead of a
-  timer.
+- [ ] Background subagents. SHIPPED (needs live Slack verification). Enabled
+  `backgroundTasks` on the `Mastra` instance and opted `agent-research`,
+  `agent-explore`, `agent-execute` into it via `backgroundTasks.tools` on the
+  orchestrator (`agents/orchestrator.ts`). Re-verified against the current
+  `@mastra/core` (1.50.1, up from whatever `chunk-JGDMZZAO.js` was) that
+  `AgentChannels` still never sets `untilIdle` for live-triggered turns, so
+  the original gap was real: a background subagent's result would write to
+  memory and then silently vanish from the user's view. Bridged it by
+  registering `backgroundTasks.onTaskComplete`/`onTaskFailed` in `index.ts`,
+  which call `orchestrator.sendSignal(..., { ifIdle: { behavior: 'wake' } })`
+  on the task's `threadId`/`resourceId`, the same wake pattern `wait.ts` and
+  scheduled tasks use. One open gap: unlike `wait.ts`/`create_scheduled_task`,
+  this wake has no live `requestContext` to thread through (`BackgroundTask`
+  doesn't carry one), so it relies entirely on `AgentChannels`' own thread-state
+  reconstruction plus the existing Slack adapter recipient-stash fix. Needs a
+  live test (delegate to a subagent, confirm the result posts back to the
+  Slack thread) before treating this as fully done.
 - [ ] Let the orchestrator choose which model a subagent runs with per
-  delegation, instead of each subagent having one fixed model.
+  delegation, instead of each subagent having one fixed model. RESEARCHED
+  (deep dive on `@mastra/core/agent-controller`, confirmed by reading source,
+  not docs alone): two real paths, neither is a small config flag.
+  1. **Our current pattern (`Agent.agents: {...}`, what research/explore/execute
+     use) cannot do this.** The delegation tool Mastra auto-generates per
+     subagent (`agent-research` etc.) has a hard-coded input schema:
+     `createSubAgentInputSchema()` in `@mastra/core`'s agent source is
+     `{ prompt, threadId, resourceId, instructions, maxSteps }`, no `model`
+     field, not configurable. The orchestrator LLM can already steer
+     `instructions` and `maxSteps` per call, just not the model. The
+     underlying capability does exist one layer down though: `Agent.stream()`'s
+     own options (`AgentExecutionOptions`) accept a per-call
+     `model?: MastraLanguageModel` override, confirmed in
+     `agent.types.d.ts:624`. Getting model choice would mean replacing the
+     auto-generated `agent-${name}` tools with hand-rolled ones (a normal
+     `createTool` per subagent, with `model` in its own input schema, calling
+     `subagent.stream(prompt, { model: chosenModel, ... })` directly) — losing
+     the free auto-wiring (and whatever the current delegation-logging hooks
+     tie into specifically, re-verify once that machinery settles) in exchange
+     for the extra field.
+  2. **`AgentController`'s subagent model management is a different feature,
+     not a drop-in fix.** `agentController.session.subagents.model.set({
+     modelId, agentType })` exists, but it is session/type-scoped (set the
+     model for all future "explore" delegations in this session, e.g. from a
+     settings UI or a human toggling speed vs. capability), not the LLM
+     picking a model per individual delegation call mid-conversation. Also:
+     `AgentController` is beta, is a different, opinionated subagent
+     abstraction (`subagents: [...]` config, forked subagents, its own thread
+     model) layered *on top of* `Agent`, not a mode switch on the `Agent.agents`
+     pattern already in use, and it is unclear how/whether it composes with
+     Mastra `channels` (the Slack Socket Mode integration this whole app is
+     built on) since nothing in either doc set mentions the two together.
+     Adopting it would be a genuine architecture change, not scoped to this
+     one TODO item.
+  Recommendation if this gets picked up: path 1 (hand-rolled delegation tools)
+  is the smaller, self-contained change and doesn't touch how Slack rendering
+  works. Do not reach for `AgentController` just for this; it would pull in a
+  beta subsystem with an unverified relationship to `channels` to solve a
+  narrower problem than it's built for.
 - [ ] Generalize the gorkie-derived codebase so porting changes from gorkie to
   this template is mechanical, not a manual line-by-line diff every time. For
   example: tool-facing strings currently written as "Gorkie can't do X" should
@@ -143,8 +181,63 @@ instead of a manual diff every time.
   the Chat SDK supports it (e.g. `upload_file`, post/edit, reactions). Route
   through the adapter/Chat SDK generic surface instead of `slack.webClient`
   where possible.
-- [ ] Make Mastra Studio a good experience: thread titles (done) plus review
-  what else surfaces well (traces, tool cards, thread lists).
+- [ ] Make Mastra Studio a good experience. Concrete quality-of-life pass:
+  request-context presets, readable processor/tool pages, approval-card smoke
+  tests, trace visibility, and optional scorer/eval wiring.
+  - [x] DONE: `research`, `explore`, and `execute` are now also registered on
+    the top-level `Mastra` instance in `src/mastra/index.ts` (they were only
+    nested under `orchestrator`'s own `agents` config for delegation before).
+    `Mastra.listAgents()` is a plain typed getter over that top-level object,
+    not a recursive walk into each agent's own nested `agents`, so without
+    this Studio's Agent tab could only show/chat with `orchestrator` and
+    `summarizer`, even though `summarizer` is a one-shot non-interactive
+    helper and the other three are the actually-interactive ones worth tuning
+    in Studio. Registering the same Agent instance in two places doesn't
+    conflict, they're independent registries. First attempt hit a live
+    collision (the file was being rewritten by something else concurrently,
+    edit silently failed to land, nothing lost); reapplied cleanly on retry.
+  - [x] Replace `studio/request-context.json`'s single hardcoded Slack-shaped
+    preset with named presets: `studio-safe` (no real Slack side effects),
+    `studio-workspace` (deterministic E2B thread id so workspace/file tools
+    work), `slack-thread` (real Slack thread smoke), and `slack-dm` (real DM
+    title/memory smoke). Clearly label which presets can post to Slack.
+  - [x] Add useful `description` fields to custom processors so Studio's
+    Processors page explains `delegated-tools`, `footer`, `sandbox`, `title`,
+    instead of showing opaque names. `tool-media` is a `CompatRule`, not a
+    Studio-listed processor, so it only has its rule name.
+  - [ ] Smoke-test Studio's processor pages after the recent cleanup. The
+    installed Studio UI has a Processors route that lists phases and can run
+    non-stream phases directly; verify our custom processors appear under the
+    expected agents and that output/result phases do not post accidental Slack
+    footers when using the safe preset.
+  - [ ] Smoke-test tool rendering in Studio and Slack after switching from
+    `onIterationComplete` logs to `hooks: logTools`: direct tool calls,
+    delegated subagent tool payloads from `processors/delegated-tools.ts`, and
+    the `post_message` approval card.
+  - [ ] Add a short README or TODO smoke matrix for Studio: chat with each
+    top-level agent, inspect tools, inspect processors, inspect traces in
+    observability, inspect memory threads, and run one approval-card test.
+  - [ ] Decide whether to add Mastra evaluations and one or two lightweight
+    scorers so Studio's Scorers/Evaluation pages are useful. Candidate checks:
+    tool-call accuracy for Slack research and prompt-alignment for guardrails.
+  - Small smoke tests to run manually in Studio, using the user's already
+    running `bun run dev` instance:
+    - [ ] Select `studio-safe`, chat with `orchestrator`, and verify no Slack
+      footer/title/post side effects occur.
+    - [ ] Select `studio-workspace`, chat with `execute`, ask it to list files,
+      and verify the workspace tools use one deterministic sandbox thread.
+    - [ ] Open `/processors`, confirm all custom processors have readable
+      names/descriptions and expected phases.
+    - [ ] Open `/tools`, confirm `post_message` shows approval-required
+      behavior before execution.
+    - [ ] Use `slack-thread-smoke-posts-to-slack` only in a disposable test
+      thread and verify `post_message` renders an approval card.
+    - [ ] Use `slack-dm-smoke-posts-to-slack` only in a disposable DM and
+      verify Slack assistant title mirroring still works.
+    - [ ] Open `/observability` after a run and confirm tool calls,
+      delegated-agent spans, and processor spans are inspectable.
+    - [ ] Open memory threads and confirm the Studio-safe thread title is
+      generated without requiring Slack-specific context.
 
 ### Deferred: gorkie regression sweep
 
@@ -184,6 +277,11 @@ for now per decision, not lost.
 - [ ] Run `bun run check` and `bun run check:spelling`.
 - [ ] Run `bun run build`.
 - [ ] Test mentions, DMs, tools, files, and scheduled tasks in Slack.
+- [ ] Test the `wait` tool in a real Slack thread: delayed resume fires, and
+  the resumed message renders in the expected place (thread vs channel).
+- [ ] Test background subagent delegation (`agent-research`/`agent-explore`/
+  `agent-execute`): confirm the result actually posts back to the Slack
+  thread once the background task completes, not just written to memory.
 
 ## Recently completed
 

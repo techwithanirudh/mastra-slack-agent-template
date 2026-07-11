@@ -27,7 +27,8 @@ async function mirrorTitle(args: ProcessOutputResultArgs): Promise<void> {
 
 export const title = {
   id: 'title',
-  name: 'Slack Conversation Title',
+  name: 'Conversation Title',
+  description: 'Mirrors memory thread titles into Slack assistant history.',
   processOutputResult(args: ProcessOutputResultArgs) {
     mirrorTitle(args).catch((error: unknown) =>
       logger.warn('[title] failed to mirror thread title to Slack', { error })

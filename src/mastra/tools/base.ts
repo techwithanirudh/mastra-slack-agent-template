@@ -25,7 +25,7 @@ export const baseTools = {
   generate_image: generateImageTool,
 };
 
-export const toolSearchTools = {
+export const deferredTools = {
   list_threads: slackTools.list_threads,
   get_channel_info: slackTools.get_channel_info,
   get_slack_file: slackTools.get_slack_file,

@@ -11,7 +11,7 @@ const operationByMode = {
 export const updateCanvasTool = createTool({
   id: 'update_canvas',
   description:
-    'Change the markdown content of an existing Slack canvas by its canvas id. Defaults to replacing the whole canvas; use append or prepend to add content instead.',
+    'Replace, append, or prepend markdown in an existing Slack canvas by canvas id.',
   inputSchema: z.object({
     canvasId: z.string().min(1).describe('The canvas id.'),
     markdown: z.string().min(1).describe('Markdown content to apply.'),
@@ -22,6 +22,7 @@ export const updateCanvasTool = createTool({
         'replace overwrites the whole canvas; append and prepend add content at the end or start.'
       ),
   }),
+  requireApproval: true,
   execute: async ({ canvasId, markdown, mode }) => {
     await slack.webClient.canvases.edit({
       canvas_id: canvasId,

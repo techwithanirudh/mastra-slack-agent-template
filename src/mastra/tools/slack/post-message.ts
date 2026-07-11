@@ -7,13 +7,14 @@ import { joinChannel } from './utils';
 export const postMessageTool = createTool({
   id: 'post_message',
   description:
-    'Post a markdown message to the current Slack thread or to a specific thread, channel, or user the bot can access.',
+    'Post a markdown message to the current Slack thread, or to a specific thread, channel, or user.',
   inputSchema: z.object({
     target: targetSchema
       .optional()
       .describe('Optional destination. Defaults to the current thread.'),
     message: z.string().min(1).describe('Markdown message body.'),
   }),
+  requireApproval: true,
   execute: async ({ target, message }, context) => {
     const ctx = channelContext(context?.requestContext);
     const resolved =

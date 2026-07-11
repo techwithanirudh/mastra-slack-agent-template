@@ -1,6 +1,6 @@
-import { delegates } from './delegates';
+import { delegatedTools } from './delegated-tools';
+import { footer } from './footer';
 import { sandbox } from './sandbox';
 import { title } from './title';
-import { turns } from './turns';
 
-export const outputProcessors = [delegates, sandbox, turns, title];
+export const outputProcessors = [delegatedTools, sandbox, footer, title];

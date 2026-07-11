@@ -13,7 +13,7 @@ const reactionFields = {
 export const reactTool = createTool({
   id: 'react',
   description:
-    'Add or remove an emoji reaction on a Slack message. Use action "add" to acknowledge the current message without sending text.',
+    'Add or remove an emoji reaction on a Slack message by current channel timestamp, channel/message id, or message URL.',
   inputSchema: z.discriminatedUnion('source', [
     z.object({
       source: z.literal('current_channel'),
