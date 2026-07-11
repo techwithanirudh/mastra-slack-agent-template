@@ -31,6 +31,12 @@ async function main(): Promise<void> {
         { noInstallRecommends: true }
       )
       .runCmd([
+        // Repos an agent clones or works in may ship hooks (lefthook, husky) that
+        // assume tools/network access the sandbox doesn't have. Point hooksPath
+        // at an empty directory so no hook script runs unless a repo explicitly
+        // overrides core.hooksPath itself.
+        'mkdir -p /etc/git/disabled-hooks',
+        'git config --system core.hooksPath /etc/git/disabled-hooks',
         'if command -v fdfind >/dev/null 2>&1; then ln -sf "$(command -v fdfind)" /usr/local/bin/fd; fi',
         'apt-get purge -y nodejs nodejs-doc || true',
         'apt-get autoremove -y || true',

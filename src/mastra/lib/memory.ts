@@ -3,7 +3,7 @@ import type { Agent } from '@mastra/core/agent';
 export async function resolveMemoryThread(
   agent: Agent,
   externalThreadId: string
-): Promise<{ id: string; resourceId?: string }> {
+): Promise<{ id: string; resourceId?: string; title?: string }> {
   const memory = await agent.getMemory();
   const found = await memory?.listThreads({
     filter: { metadata: { channel_externalThreadId: externalThreadId } },

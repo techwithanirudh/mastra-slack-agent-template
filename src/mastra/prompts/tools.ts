@@ -3,14 +3,15 @@ import { sandbox } from '../config';
 export const toolsPrompt = `\
 <tools>
 <tool>
-<name>agent-research / agent-explore</name>
+<name>agent-research / agent-explore / agent-execute</name>
 <note>
-If a task looks like heavy research or a broad codebase sweep (several lookups/reads, raw results you only need conclusions from, or a self-contained side quest inside a bigger request), delegate it. Handle it yourself when a couple of direct tool calls will answer, when you need the raw content itself to act on (e.g. you are about to edit that exact file), or when the user is asking about the current conversation.
+If a task looks like heavy research, a broad codebase sweep, or a self-contained build/change job, delegate it. Always use agent-execute for command execution, file changes, builds, tests, previews, generated assets, website/app creation, or deployment-oriented work. Handle it yourself only when a couple of non-execution tool calls will answer, when you need the raw content itself to act on, or when the user is asking about the current conversation.
 
-Pick the narrowest agent that can do the job, and put the full task with all needed context in prompt. The helper cannot see this conversation, so include names, ids, links, and what a good answer looks like. Both write nothing to Slack themselves (no messages, no file uploads); you deliver the final answer.
+Pick the narrowest agent that can do the job, and put the full task with all needed context in prompt. The helper cannot see this conversation, so include names, ids, links, and what a good answer looks like. None of the three write to Slack themselves (no messages, no file uploads); you deliver the final answer.
 
 - agent-research: Slack, web (search_web, fetch_url), user, channel, and thread lookups only. Cannot touch the workspace or run commands. Use for "what is X", background on a person/channel/thread, web facts, or reading a specific URL.
 - agent-explore: read-only workspace inspection (read_file, list_files, grep, file_stat) plus the same research tools (including fetch_url). Cannot write, edit, delete, or run commands. Use to gather implementation context before a change, or to answer "where is X in the code" / "how does Y work" without touching anything.
+- agent-execute: workspace changes, websites, apps, prototypes, generated assets, command execution, tests, previews, and deployment-oriented work. It can load skills, edit files, run sandbox commands, and generate images. Use it whenever the user asks to make or build something substantial, especially website or app work. If execution is needed, delegate to this agent instead of calling execution tools yourself.
 </note>
 </tool>
 
@@ -102,6 +103,11 @@ There are only two valid ways to end a turn: write your normal streamed reply te
 </tool>
 
 <tool>
+<name>wait</name>
+<note>Does not block; it ends this turn and wakes you back up in this same conversation once the wait is over, so calling it always ends your turn, like skip. Unlike skip, say what you are waiting for before calling it, then stop; do not call more tools in the same turn after wait. Use to space out polling (checking on a build, a long sandbox job, an external event) without holding the turn open. For a wait longer than a few minutes, or a recurring check-in, use create_scheduled_task instead.</note>
+</tool>
+
+<tool>
 <name>read_file</name>
 <note>
 Use read_file for text files and images. Do NOT use it on arbitrary binary files.
@@ -121,6 +127,8 @@ Images (.png, .jpg, .webp, etc.) are delivered to you visually. Describe only wh
 The sandbox pauses after ${sandbox.timeout / 60_000} minutes of inactivity. That clock only resets between steps, not while a single command is still running, so keep any foreground timeout under ${sandbox.timeout / 60_000} minutes (${sandbox.timeout / 1000}s).
 
 For anything that genuinely takes longer (data processing, big builds, long-running jobs), start it with background: true and poll it periodically with get_process_output. Each poll is its own step and resets the ${sandbox.timeout / 60_000}-minute clock, making this the way to safely run something for 15 to 20+ minutes.
+
+Do not call execute_command directly for user-requested build or change work. Delegate to agent-execute whenever a command needs to run for the user, including package installs, builds, tests, servers, scripts, previews, deploys, and file mutations. agent-execute owns execution and reports back for your final response.
 </note>
 </tool>
 </tool>
