@@ -79,7 +79,7 @@ instead of a manual diff every time.
   together with send-as-user tools below, same underlying ownership model.
 - [ ] Langfuse cost tracking: surface per-user spend (who spends the most).
 - [ ] Topic summaries.
-- [ ] Agent browser via [Cloak Browser](https://github.com/CloakHQ/CloakBrowser/blob/main/examples/integrations/agent_browser.sh)
+- [ ] Agent browser via [Cloak Browser](https://github.com/Cl oakHQ/CloakBrowser/blob/main/examples/integrations/agent_browser.sh)
   for browser automation tools.
 - [ ] Let users disable the usage/cost footer shown under responses.
 - [ ] Scoped Slack [code mode](https://mastra.ai/docs/agents/code-mode) tool
@@ -98,16 +98,43 @@ instead of a manual diff every time.
   (GitHub events, AgentMail) instead of only polling on a cron schedule. `wait`
   (shipped, see Recently completed) covers "pause and resume later"; this is
   the "react to an external trigger" half.
-- [ ] Background subagents: let a subagent run while the orchestrator continues
-  other work instead of blocking on it, then pick the result back up once it
-  resolves.
+- [ ] Background subagents. RESEARCHED, possible but needs a bridge, not yet
+  implemented. Mastra's `backgroundTasks` system dispatches subagent
+  delegations as background tool calls transparently (confirmed via source);
+  requires enabling `backgroundTasks` on the `Mastra` instance (new config, not
+  currently set) and opting the subagent in via `backgroundTasks.tools` on the
+  orchestrator. The catch, confirmed by reading `chunk-JGDMZZAO.js`: background
+  task completion only flows into whichever stream is actively consuming
+  `agent.stream()` at the time, and re-invocation on completion only happens
+  automatically "if you use `stream()` with the `untilIdle` option" per
+  Mastra's own docs. `AgentChannels` (the Slack integration) never sets
+  `untilIdle` anywhere, so a background subagent's result would write to
+  memory and then silently vanish from the user's view, nothing would
+  proactively post it back to Slack. Fix: register `backgroundTasks.onTaskComplete`
+  / `onTaskFailed` on the `Mastra` instance and, from there, call
+  `agent.sendSignal(..., { ifIdle: { behavior: 'wake' } })` on the task's
+  `threadId`/`resourceId` (`BackgroundTask` carries both). This is the exact
+  same wake pattern `wait.ts` already uses and that this session verified
+  renders correctly in Slack, just triggered from task completion instead of a
+  timer.
 - [ ] Let the orchestrator choose which model a subagent runs with per
   delegation, instead of each subagent having one fixed model.
 - [ ] Generalize the gorkie-derived codebase so porting changes from gorkie to
   this template is mechanical, not a manual line-by-line diff every time. For
   example: tool-facing strings currently written as "Gorkie can't do X" should
   be genuinely identity-neutral ("Can't do X") in gorkie's own source, not
-  find-and-replaced during porting.
+  find-and-replaced during porting. HOLD OFF: a design doc already exists at
+  `plans/generalize-gorkie.md` (identity config block in `config.ts`, consumed
+  by personality/core/slack prompts and tool files; also flags Mastra's
+  built-in `ChannelContext.botMention`/`botUserId` as an unused, higher-value
+  fix for gorkie's hardcoded self-recognition Slack ids). It went stale within
+  minutes of being written because too much is moving in parallel right now:
+  gorkie gained new "Gorkie"-branded strings from an unrelated code-mode/canvas/
+  pins build (shifts the plan's file/line citations), and this repo deleted
+  `tools/slack/edit-message.ts`/`delete-message.ts` entirely (the plan's step 6
+  names both as edit targets). Do not execute the plan as-is. Once things
+  settle, re-grep both repos fresh against current state, fix the plan's
+  citations, then execute.
 - [ ] Send-as-user tools: a real "send this in that channel/DM as me"
   capability, separate from the agent authoring and posting its own message.
   See the deferred Slack tool-authorization item below: agent-authored posts

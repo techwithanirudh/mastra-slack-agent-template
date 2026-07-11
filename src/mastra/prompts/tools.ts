@@ -67,17 +67,12 @@ If unavailable because the user did not @mention you, use web search and say you
 
 <tool>
 <name>post_message</name>
-<note>Use for an explicit Slack destination. Your streamed reply already covers the current thread, so avoid posting the same message twice.
+<note>Defaults to the current Slack thread. Pass target only when posting somewhere else. Your streamed reply already covers the current thread, so avoid posting the same message twice.
 
 Errors:
 channel_not_found usually means the bot isn't a member of that private channel;
 not_in_channel means it hasn't joined yet. 
 Either way, tell the user to invite the bot there.</note>
-</tool>
-
-<tool>
-<name>edit_message / delete_message</name>
-<note>Prefer { source: "url", url } when the user gives a Slack message link. Otherwise use { source: "id", channelId, messageId }. Slack only permits the bot to edit or delete messages it owns.</note>
 </tool>
 
 <tool>

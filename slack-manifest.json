@@ -15,7 +15,7 @@
       "always_online": true
     },
     "assistant_view": {
-      "assistant_description": "Your AI assistant for Slack. Searches the web, writes and runs code, generates images, browses websites, manages reminders and scheduled tasks, and more."
+      "assistant_description": "Your AI assistant for Slack. Searches the web, writes and runs code, generates images, browses websites, manages scheduled tasks, and more."
     }
   },
   "oauth_config": {
