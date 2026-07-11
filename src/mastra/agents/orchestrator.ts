@@ -8,6 +8,7 @@ import {
 import { Memory } from '@mastra/memory';
 import { env } from '@/env';
 import { slack } from '../chat/client';
+import { formatChatError } from '../chat/format-error';
 import {
   onDirectMessage,
   onMention,
@@ -15,6 +16,11 @@ import {
 } from '../chat/handlers';
 import { toolDisplay } from '../chat/tool-display';
 import { agent as config } from '../config';
+import {
+  logDelegationComplete,
+  logDelegationStart,
+  logTools,
+} from '../lib/logger/tools';
 import { stepCountIs, toolCall } from '../lib/tools';
 import { outputProcessors } from '../processors';
 import { relocateToolResultImages } from '../processors/tool-media';
@@ -23,7 +29,7 @@ import {
   orchestrator as orchestratorModel,
   summarizer as summarizerModel,
 } from '../providers';
-import { baseTools, toolSearchTools } from '../tools/base';
+import { baseTools, deferredTools } from '../tools/base';
 import { workspace } from '../workspace';
 import { executeAgent } from './execute';
 import { exploreAgent } from './explore';
@@ -34,8 +40,13 @@ const orchestrator = new Agent({
   name: 'Orchestrator',
   instructions: ({ requestContext }) => buildInstructions(requestContext),
   model: orchestratorModel,
+  hooks: logTools,
   defaultOptions: {
     modelSettings: { maxOutputTokens: config.maxTokens.output },
+    delegation: {
+      onDelegationStart: logDelegationStart,
+      onDelegationComplete: logDelegationComplete,
+    },
     stopWhen: [
       toolCall('skip'),
       toolCall('leave_channel'),
@@ -46,7 +57,7 @@ const orchestrator = new Agent({
   workspace,
   inputProcessors: [
     new ToolSearchProcessor({
-      tools: toolSearchTools,
+      tools: deferredTools,
       storage: 'context',
       search: {
         topK: 4,
@@ -67,6 +78,17 @@ const orchestrator = new Agent({
     research: researchAgent,
     explore: exploreAgent,
     execute: executeAgent,
+  },
+  // Subagent delegations (auto-generated tools named `agent-${key}`) run as
+  // background tasks so a long research/explore/execute call doesn't block
+  // the turn. See index.ts's backgroundTasks.onTaskComplete/onTaskFailed for
+  // the wake-on-completion half of this.
+  backgroundTasks: {
+    tools: {
+      'agent-research': true,
+      'agent-explore': true,
+      'agent-execute': true,
+    },
   },
   memory: new Memory({
     options: {
@@ -100,8 +122,7 @@ const orchestrator = new Agent({
         adapter: slack,
         streaming: true,
         toolDisplay,
-        formatError: (error) =>
-          `*Oops, something went wrong.*\n\n> ${error.message}`,
+        formatError: formatChatError,
       },
     },
     threadContext: { maxMessages: 10 },

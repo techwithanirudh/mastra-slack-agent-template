@@ -5,7 +5,6 @@ import type {
 import { Card, CardText } from 'chat';
 import { slack } from '../chat/client';
 import { agent as agentConfig } from '../config';
-import { clip } from '../lib/clip';
 import { channelContext } from '../lib/context';
 import { logger } from '../lib/logger';
 
@@ -14,42 +13,17 @@ const compactTokens = new Intl.NumberFormat('en', {
   notation: 'compact',
 });
 
-export const turns = {
-  id: 'turns',
-  name: 'Turn Logging',
+export const footer = {
+  id: 'footer',
+  name: 'Completion Footer',
+  description: 'Logs turn usage and posts the completion footer.',
   processOutputStep(args: ProcessOutputStepArgs) {
-    const { threadId } = channelContext(args.requestContext);
-    for (const call of args.toolCalls ?? []) {
-      logger.info('[tool] call', {
-        threadId,
-        tool: call.toolName,
-        args: clip(call.args),
-      });
-    }
     args.state.startTime ??= Date.now();
     return args.messages;
   },
   async processOutputResult(args: ProcessOutputResultArgs) {
     const ctx = channelContext(args.requestContext);
     const { threadId } = ctx;
-
-    for (const step of args.result.steps) {
-      for (const { payload } of step.toolResults ?? []) {
-        if (payload.isError) {
-          logger.warn('[tool] error', {
-            threadId,
-            tool: payload.toolName,
-            error: clip(payload.result),
-          });
-        } else {
-          logger.info('[tool] result', {
-            threadId,
-            tool: payload.toolName,
-            output: clip(payload.result),
-          });
-        }
-      }
-    }
 
     const { usage } = args.result;
     const inputTokens = usage?.inputTokens ?? 0;

@@ -6,6 +6,7 @@ import {
 import { InMemoryStore } from '@mastra/core/storage';
 import { Memory } from '@mastra/memory';
 import { agent as config } from '../config';
+import { logTools } from '../lib/logger/tools';
 import { stepCountIs } from '../lib/tools';
 import { sandbox } from '../processors/sandbox';
 import { relocateToolResultImages } from '../processors/tool-media';
@@ -21,6 +22,7 @@ export const executeAgent = new Agent({
   instructions:
     'You are Execute. Build, edit, run, and verify requested artifacts in the workspace. Load relevant skills before specialized work, especially deployment, framework, browser, or platform tasks. Use the sandbox for all commands. Keep Slack posting and final user-facing summaries for the parent agent. Return concise results with changed paths, commands run, verification, and any remaining risks.',
   model: executor,
+  hooks: logTools,
   memory: new Memory({ storage: new InMemoryStore() }),
   workspace,
   tools: baseTools,

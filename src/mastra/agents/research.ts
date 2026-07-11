@@ -6,9 +6,10 @@ import {
 import { InMemoryStore } from '@mastra/core/storage';
 import { Memory } from '@mastra/memory';
 import { agent as config } from '../config';
+import { logTools } from '../lib/logger/tools';
 import { stepCountIs } from '../lib/tools';
 import { scout } from '../providers';
-import { baseTools, toolSearchTools } from '../tools/base';
+import { baseTools, deferredTools } from '../tools/base';
 import { workspace } from '../workspace';
 
 export const researchAgent = new Agent({
@@ -19,12 +20,13 @@ export const researchAgent = new Agent({
   instructions:
     'You are Research. Gather facts using Slack, web, user, channel, and thread tools. Prefer compact sourced findings over raw dumps. Include links, thread ids, channel names, dates, and uncertainty when available. Do not edit files, run commands, upload files, or post messages. Keep total tool calls under 300, then write up your findings.',
   model: scout,
+  hooks: logTools,
   memory: new Memory({ storage: new InMemoryStore() }),
   workspace,
   tools: baseTools,
   inputProcessors: [
     new ToolSearchProcessor({
-      tools: toolSearchTools,
+      tools: deferredTools,
       storage: 'context',
       search: {
         topK: 4,

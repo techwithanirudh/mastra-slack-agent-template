@@ -29,7 +29,7 @@ function opencode(model: string): LanguageModelV3 {
 
 export const orchestrator: ModelWithRetries[] = [
   {
-    model: openrouter('tencent/hy3:free'),
+    model: openrouter('minimax/minimax-m3'),
     maxRetries: 3,
     providerOptions: {
       openrouter: { reasoningEffort: 'medium' },
@@ -71,13 +71,13 @@ export const explorer: ModelWithRetries[] = [
 ];
 
 export const executor: ModelWithRetries[] = [
+  ...(env.OPENCODE_API_KEY
+    ? [{ model: opencode('kimi-k2.7-code'), maxRetries: 3 }]
+    : []),
   {
-    model: openrouter('z-ai/glm-5.2'),
+    model: openrouter('moonshotai/kimi-k2.7-code'),
     maxRetries: 3,
   },
-  ...(env.OPENCODE_API_KEY
-    ? [{ model: opencode('glm-5.2'), maxRetries: 3 }]
-    : []),
 ];
 
 export const images = createOpenRouter({

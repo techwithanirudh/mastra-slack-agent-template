@@ -7,11 +7,12 @@ import {
 import { InMemoryStore } from '@mastra/core/storage';
 import { Memory } from '@mastra/memory';
 import { agent as config } from '../config';
+import { logTools } from '../lib/logger/tools';
 import { stepCountIs } from '../lib/tools';
 import { sandbox } from '../processors/sandbox';
 import { relocateToolResultImages } from '../processors/tool-media';
 import { explorer } from '../providers';
-import { baseTools, toolSearchTools } from '../tools/base';
+import { baseTools, deferredTools } from '../tools/base';
 import { workspace } from '../workspace';
 
 export const exploreAgent = new Agent({
@@ -22,12 +23,13 @@ export const exploreAgent = new Agent({
   instructions:
     'You are Explore. Inspect the workspace and gather context. Do not modify files, delete files, upload files, post messages, or run risky commands. Keep total tool calls under 300, then write up your findings. Return concise findings with file paths, facts, and uncertainties.',
   model: explorer,
+  hooks: logTools,
   memory: new Memory({ storage: new InMemoryStore() }),
   workspace,
   tools: baseTools,
   inputProcessors: [
     new ToolSearchProcessor({
-      tools: toolSearchTools,
+      tools: deferredTools,
       storage: 'context',
       search: {
         topK: 4,
