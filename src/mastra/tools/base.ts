@@ -3,11 +3,11 @@ import { canvasTools } from './canvas';
 import { fetchUrlTool } from './fetch-url';
 import { generateImageTool } from './generate-image';
 import { grepTool } from './grep';
-import { scheduleReminderTool } from './schedule-reminder';
 import { scheduledTaskTools } from './scheduled-tasks';
 import { searchWebTool } from './search-web';
 import { skipTool } from './skip';
 import { slackTools } from './slack';
+import { waitTool } from './wait';
 
 export const baseTools = {
   ...slackTools,
@@ -17,7 +17,7 @@ export const baseTools = {
   search_web: searchWebTool,
   fetch_url: fetchUrlTool,
   grep: grepTool,
-  schedule_reminder: scheduleReminderTool,
+  wait: waitTool,
   generate_image: generateImageTool,
   ...mcpTools,
 };

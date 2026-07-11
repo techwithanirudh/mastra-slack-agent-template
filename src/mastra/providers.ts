@@ -70,6 +70,16 @@ export const explorer: ModelWithRetries[] = [
     : []),
 ];
 
+export const executor: ModelWithRetries[] = [
+  {
+    model: openrouter('z-ai/glm-5.2'),
+    maxRetries: 3,
+  },
+  ...(env.OPENCODE_API_KEY
+    ? [{ model: opencode('glm-5.2'), maxRetries: 3 }]
+    : []),
+];
+
 export const images = createOpenRouter({
   apiKey: env.OPENROUTER_API_KEY,
   baseURL: env.OPENROUTER_BASE_URL,

@@ -24,6 +24,7 @@ import {
 } from '../providers';
 import { baseTools } from '../tools/base';
 import { workspace } from '../workspace';
+import { executeAgent } from './execute';
 import { exploreAgent } from './explore';
 import { researchAgent } from './research';
 
@@ -37,6 +38,7 @@ const orchestrator = new Agent({
     stopWhen: [
       toolCall('skip'),
       toolCall('leave_channel'),
+      toolCall('wait'),
       stepCountIs(config.maxSteps),
     ],
   },
@@ -55,6 +57,7 @@ const orchestrator = new Agent({
   agents: {
     research: researchAgent,
     explore: exploreAgent,
+    execute: executeAgent,
   },
   memory: new Memory({
     options: {

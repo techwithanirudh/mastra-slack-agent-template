@@ -6,6 +6,7 @@ import { agent as config } from '../config';
 import { stepCountIs } from '../lib/tools';
 import { scout } from '../providers';
 import { baseTools } from '../tools/base';
+import { workspace } from '../workspace';
 
 export const researchAgent = new Agent({
   id: 'research',
@@ -16,6 +17,7 @@ export const researchAgent = new Agent({
     'You are Research. Gather facts using Slack, web, user, channel, and thread tools. Prefer compact sourced findings over raw dumps. Include links, thread ids, channel names, dates, and uncertainty when available. Do not edit files, run commands, upload files, or post messages. Keep total tool calls under 300, then write up your findings.',
   model: scout,
   memory: new Memory({ storage: new InMemoryStore() }),
+  workspace,
   tools: baseTools,
   inputProcessors: [
     new TokenLimiterProcessor({
@@ -25,6 +27,9 @@ export const researchAgent = new Agent({
   ],
   defaultOptions: {
     activeTools: [
+      'skill',
+      'skill_search',
+      'skill_read',
       'search_web',
       'fetch_url',
       'search_slack',

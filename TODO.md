@@ -20,51 +20,10 @@ reusable form of the feature: same mechanism, no fixed identity or
 deployment baked in.
 
 This means gorkie's `dev` branch is usually ahead of this repo on anything
-non-cosmetic (see the DM-anchor fix, edit/delete-message ownership scoping,
-and guardrails as examples already tracked below), and this repo should
-periodically diff against it to catch drift and pull across whatever has
-matured enough to templatize.
-
-## Active work stream
-
-Ordered. Work top to bottom, no rush.
-
-- [x] Scheduled tasks: stream tool cards into channel threads (recipient stash
-  in `chat/adapter.ts`). Shipped.
-- [x] DM titles: generate with the summarizer from the first exchange, not a
-  naive truncation. Shipped as `processors/title.ts`.
-- [x] Studio thread titles: enable Mastra's built-in `generateTitle` (Memory
-  config in `agents/orchestrator.ts`), pointed at the cheap summarizer model.
-  Covers every platform's Mastra thread title shown in Studio.
-- [x] Remove committed cruft: `tools-dump.md` (a stray Claude Code tool-inventory
-  dump).
-- [ ] DECIDE: keep the Slack-specific `title.ts` processor (sets Slack's
-  assistant History-tab title, which built-in `generateTitle` cannot) or drop it
-  and let Slack show its default first-message title. Built-in already covers
-  Studio; this only adds the Slack-native surface.
-- [ ] Add a `wait` tool (let the agent pause/sleep between steps, e.g. polling a
-  long job or waiting on an external event).
-- [ ] Remove the `schedule_reminder` tool.
-- [x] App Home tab: enabled `home_tab_enabled`, re-subscribed `app_home_opened`,
-  and publish a generic welcome view (capabilities + how to start) from
-  `chat/events.ts` on home-tab open. No gorkie identity. Requires reinstalling
-  the Slack app for the manifest change. Later: replace with real settings
-  controls (e.g. tool-visibility toggle) once the template has any.
-- [x] De-duplicate the agent guide: `.claude/CLAUDE.md` was a byte-identical copy
-  of `AGENTS.md`. Replaced the copy with a symlink to `../AGENTS.md` (matching
-  gorkie), so `AGENTS.md` is the single source of truth and `CLAUDE.md` still
-  resolves.
-- [ ] Cross-platform tools: make Slack-only tools work on other platforms where
-  the Chat SDK supports it (e.g. `upload_file`, post/edit, reactions). Route
-  through the adapter/Chat SDK generic surface instead of `slack.webClient`
-  where possible.
-- [ ] Make Mastra Studio a good experience: thread titles (done) plus review
-  what else surfaces well (traces, tool cards, thread lists).
-- [ ] Gorkie regression sweep: full line-by-line diff of template vs gorkie
-  `dev` to find regressions and leftover cruft. Delegated to a background
-  subagent; fold in its findings when they land. Known open item from earlier:
-  `prompts/guardrails.ts` (safety prompt) was dropped from the template's
-  system-prompt assembly.
+non-cosmetic, and this repo should periodically diff against it to catch
+drift and pull across whatever has matured enough to templatize. See
+"Generalize the gorkie codebase" in Roadmap for making this mechanical
+instead of a manual diff every time.
 
 ## Setup
 
@@ -87,28 +46,24 @@ Ordered. Work top to bottom, no rush.
 
 ## Bugs
 
-- [x] FIXED: scheduled tasks now render live tool cards in channel threads, not
-  just DMs. Root cause: Slack's native streaming (`chat.startStream`, which
-  carries the structured tool-card chunks) requires `recipient_user_id`/
-  `recipient_team_id` for any non-DM channel. `chat`'s `Thread.handleStream()`
-  only derives those `if (this._currentMessage)`, i.e. from a live inbound
-  message. A scheduled fire wakes an idle thread with no triggering message, so
-  `@chat-adapter/slack`'s `stream()` saw no recipient and fell back to plain
-  post+edit, which drops the `{ chunk, kind: 'stream' }` task-update chunks our
-  `tool-display/format.ts` emits (they only exist inside `chat.appendStream`).
-  DMs were unaffected because `stream()` accepts them on `channel.startsWith('D')`
-  alone. Fix (`src/mastra/chat/adapter.ts`): `SlackAgentAdapter` now stashes the
-  `{ userId, teamId }` recipient per thread from every live non-DM message
-  (persisted in the channels Postgres state via `chat.getState()`, with an
-  in-memory cache to avoid a write per message), and its `stream()` override
-  injects that stashed recipient into the stream options whenever the options
-  lack one and the channel isn't a DM. The schedule-creating message is always
-  a live message in the same thread, so the recipient is present by the time
-  the schedule fires, and it survives restarts. Generic: also covers reminders
-  and any future signal-driven run into a channel thread. Verify live before
-  closing.
-- [ ] Subagent tool cards stop rendering in Slack past 60 steps.
-- [ ] Give clearer live indication that a response is still being processed.
+- [ ] CRITICAL, contradicts recently shipped work: Slack has deprecated
+  `assistant_view` on mobile, it does not render there at all. This directly
+  undercuts the "switch to assistant_view" work already shipped this session
+  (see Recently completed), which removed the old DM-anchor workaround on the
+  premise that assistant_view was the correct, future-proof target. Needs a
+  real decision before touching code: either move to Slack's newer
+  `agent_view` manifest feature (per earlier session notes, the pinned
+  `@chat-adapter/slack` had zero `agent_view` support at last check, so that
+  may mean an adapter upgrade or hand-rolling the event handling again), or
+  another supported path. This has flip-flopped between agent_view and
+  assistant_view multiple times already this session; read the git history and
+  this file's older entries before starting, do not just re-flip it again.
+- [ ] Tool cards stop rendering properly in Slack past roughly 50-60 steps in a
+  turn (reports vary: ~50 for execute/other agents, ~60 reported separately for
+  subagents). May be one root cause or two; investigate before assuming.
+- [ ] Give clearer live indication of turn state in Slack: both that a response
+  is still being processed, and, separately, a clear signal once the agent has
+  fully stopped (a distinct UX gap raised independently).
 
 ## Roadmap
 
@@ -120,7 +75,8 @@ Ordered. Work top to bottom, no rush.
 - [ ] Custom instructions: persistent per-user instructions for persona, tone,
   style, and how to address them.
 - [ ] Restrict `edit_message` and `delete_message` to messages the bot itself
-  posted. Already implemented on gorkie `dev`. Low priority for now.
+  posted. Already implemented on gorkie `dev`. Low priority for now. Land
+  together with send-as-user tools below, same underlying ownership model.
 - [ ] Langfuse cost tracking: surface per-user spend (who spends the most).
 - [ ] Topic summaries.
 - [ ] Agent browser via [Cloak Browser](https://github.com/CloakHQ/CloakBrowser/blob/main/examples/integrations/agent_browser.sh)
@@ -129,10 +85,71 @@ Ordered. Work top to bottom, no rush.
 - [ ] Scoped Slack [code mode](https://mastra.ai/docs/agents/code-mode) tool
   (`createCodeMode`) for multi-step Slack operations in one sandboxed call:
   post_message, edit/delete own messages, canvas CRUD, pin a message, set
-  channel topic, and a wait tool. Considered a code-mode tool for email too;
-  decided against it for now.
-- [ ] Signal subscriptions: let the agent wait on or react to external events
-  (GitHub events, AgentMail) instead of only polling on a cron schedule.
+  channel topic. The removed `schedule_reminder` capability (see Recently
+  completed) should come back through this rather than as its own tool. Isolate
+  code mode to specific tool groups (Slack tools only, canvases,
+  send/edit/delete-as-user, pin, etc.) via multiple scoped `createCodeMode()`
+  instances rather than one flat allow-list. Considered a code-mode tool for
+  checking email too; decided against it for now. Open concern (Devarsh): code
+  mode provisions a sandbox on every call, confirm that cost/latency is
+  acceptable before committing to this design, or find a way to reuse/pool
+  sandboxes across calls.
+- [ ] Signal subscriptions: let the agent monitor and react to external events
+  (GitHub events, AgentMail) instead of only polling on a cron schedule. `wait`
+  (shipped, see Recently completed) covers "pause and resume later"; this is
+  the "react to an external trigger" half.
+- [ ] Background subagents: let a subagent run while the orchestrator continues
+  other work instead of blocking on it, then pick the result back up once it
+  resolves.
+- [ ] Let the orchestrator choose which model a subagent runs with per
+  delegation, instead of each subagent having one fixed model.
+- [ ] Generalize the gorkie-derived codebase so porting changes from gorkie to
+  this template is mechanical, not a manual line-by-line diff every time. For
+  example: tool-facing strings currently written as "Gorkie can't do X" should
+  be genuinely identity-neutral ("Can't do X") in gorkie's own source, not
+  find-and-replaced during porting.
+- [ ] Send-as-user tools: a real "send this in that channel/DM as me"
+  capability, separate from the agent authoring and posting its own message.
+  See the deferred Slack tool-authorization item below: agent-authored posts
+  should stay broadly open, send-as-user needs the ownership/scoping controls.
+- [ ] Cross-platform tools: make Slack-only tools work on other platforms where
+  the Chat SDK supports it (e.g. `upload_file`, post/edit, reactions). Route
+  through the adapter/Chat SDK generic surface instead of `slack.webClient`
+  where possible.
+- [ ] Make Mastra Studio a good experience: thread titles (done) plus review
+  what else surfaces well (traces, tool cards, thread lists).
+
+### Deferred: gorkie regression sweep
+
+Full line-by-line diff of template vs gorkie `dev` completed by a subagent.
+Headline finding: templatization stripped most of the safety layer. Deferred
+for now per decision, not lost.
+
+- [ ] Restore prompt-level safety, de-identified. `prompts/guardrails.ts` was
+  deleted and dropped from the `prompts/index.ts` assembly (hard rules: never
+  rotate/reveal secrets, never delete user data, confirm-first on
+  destructive/prod/git actions, refuse malware/tunnel/keylogger installs,
+  narrate risky steps). `core.ts` also lost the "ALWAYS SFW, non-negotiable"
+  block and the notification-triage line. `personality.ts` lost the em-dash ban
+  that `AGENTS.md` still mandates.
+- [ ] Pending the code-mode refactor: the Slack tool authorization guards that
+  `tools/slack/utils.ts` lost: `assertCanPostTo` (post/upload only to the
+  current channel + requester), `assertReadableChannel` (read only current
+  thread + public channels), `assertCanManagePostedMessage` +
+  `recordPostedMessage` (edit/delete only bot-recorded messages, for the
+  original requester). Restoring these now would be thrown away by the
+  code-mode work above, so re-add the ownership + scoping model as part of
+  that refactor instead. NUANCE: keep `post_message` flexible, don't just lock
+  it down. The agent authoring a message and posting it (e.g. "score update: X
+  won") is genuinely useful and should stay broadly allowed; the security
+  concern is specifically the send-as-user case.
+- [ ] VERIFY: `mcp/index.ts` ships a live default MCP server
+  (`@upstash/context7-mcp` auto-spawned via top-level await). Confirm shipping
+  a template with an auto-spawned external MCP by default is intended.
+- Confirmed non-issues from the sweep: `minInterval` 5 min is intentional; the
+  `observability.duckdb` (1.5 GB) is gitignored runtime bloat held open by the
+  live bot; the `get_slack_file` rename is fully consistent;
+  identity/allowlist/onboarding/attribution/email drops are all intentional.
 
 ## Verify
 
@@ -143,18 +160,40 @@ Ordered. Work top to bottom, no rush.
 
 ## Recently completed
 
-- Moved Slack suggested prompts out of the static `slack-manifest.json` and set
-  them dynamically on `assistant_thread_started`/`assistant_thread_context_changed`
-  via `setSuggestedPrompts`, and title each DM thread after its first user
-  message via `setAssistantTitle` (tracked once per thread with a `titled` state
-  flag). Requires reinstalling the Slack app for the manifest change.
-- Switched the Slack manifest and adapter from `agent_view` back to
-  `assistant_view`. The Chat SDK's Slack adapter natively handles
-  `assistant_thread_started`/`assistant_thread_context_changed` with a real
-  `thread_ts` from the moment a DM opens, so this fixes native streaming and
-  live tool display in DMs without the custom reply-anchoring workaround
-  `agent_view` needed. Requires reinstalling the Slack app for the manifest
-  change to take effect.
+- Split tools into an always-loaded set and a search-loaded set via
+  `ToolSearchProcessor`, deferring less-common tools (`list_threads`,
+  `get_channel_info`, `post_message`, canvas tools, MCP tools, etc.) until the
+  agent searches for them. Added a `react` tool and set `channels.tools: false`
+  to disable Mastra channels' own generic tools in favor of the existing Slack
+  tool set.
+- Streamed tool cards into channel threads for scheduled tasks, not just DMs,
+  via a per-thread stream-recipient stash in the Slack adapter
+  (`chat/adapter.ts`).
+- Enabled the App Home tab with a generic, identity-neutral welcome view.
+- Added a non-blocking `wait` tool: ends the turn immediately and wakes the
+  same thread later via the same signal path scheduled tasks use, instead of
+  blocking inside the tool call.
+- Removed the `schedule_reminder` tool; use `create_scheduled_task` for now
+  (see the code-mode roadmap item above for where this capability goes next).
+- Mirrored Mastra's built-in `generateTitle` onto Slack's assistant History tab
+  for DMs (`processors/title.ts`), instead of a second title-generation call.
+- Added `skill`, `skill_search`, and `skill_read` tools to every tool-using
+  agent (`research`, `explore`; the orchestrator already had them implicitly).
+- Ported the `execute` subagent from gorkie for build/change work, registered
+  as `agent-execute`.
+- De-duplicated the agent guide: `.claude/CLAUDE.md` now symlinks to
+  `AGENTS.md` instead of duplicating it.
+- Removed a stray tool-inventory dump file that had been committed by accident.
+- Fixed scheduled tasks not rendering live tool cards in channel threads (root
+  cause: Slack's native streaming needs a `recipient_user_id`/`team_id` for any
+  non-DM channel that a schedule-woken thread has no live message to derive;
+  fixed by stashing it from the last live message in that thread).
+- Switched the Slack manifest and adapter from `agent_view` to `assistant_view`
+  for native DM streaming and live tool display. Superseded by the CRITICAL bug
+  above (Slack has since deprecated assistant_view on mobile); kept here for
+  history, do not treat as settled.
+- Moved Slack suggested prompts out of the static manifest and set them
+  dynamically on `assistant_thread_started`/`assistant_thread_context_changed`.
 - Changed the Slack initial streaming placeholder to `Working...`.
 - Tuned Slack progress UX so routine tool progress uses tool cards instead of
   streamed narration.

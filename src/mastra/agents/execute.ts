@@ -9,18 +9,18 @@ import { agent as config } from '../config';
 import { stepCountIs } from '../lib/tools';
 import { sandbox } from '../processors/sandbox';
 import { relocateToolResultImages } from '../processors/tool-media';
-import { explorer } from '../providers';
+import { executor } from '../providers';
 import { baseTools } from '../tools/base';
 import { workspace } from '../workspace';
 
-export const exploreAgent = new Agent({
-  id: 'explore',
-  name: 'Explore',
+export const executeAgent = new Agent({
+  id: 'execute',
+  name: 'Execute',
   description:
-    'Reads workspace files and gathers implementation context without making changes.',
+    'Builds and changes things in the workspace, including websites and apps, using sandbox commands, file tools, and workspace skills.',
   instructions:
-    'You are Explore. Inspect the workspace and gather context. Do not modify files, delete files, upload files, post messages, or run risky commands. Keep total tool calls under 300, then write up your findings. Return concise findings with file paths, facts, and uncertainties.',
-  model: explorer,
+    'You are Execute. Build, edit, run, and verify requested artifacts in the workspace. Load relevant skills before specialized work, especially deployment, framework, browser, or platform tasks. Use the sandbox for all commands. Keep Slack posting and final user-facing summaries for the parent agent. Return concise results with changed paths, commands run, verification, and any remaining risks.',
+  model: executor,
   memory: new Memory({ storage: new InMemoryStore() }),
   workspace,
   tools: baseTools,
@@ -39,16 +39,19 @@ export const exploreAgent = new Agent({
       'skill_search',
       'skill_read',
       'read_file',
+      'write_file',
+      'edit_file',
       'list_files',
-      'grep',
+      'delete_file',
       'file_stat',
+      'ast_edit',
+      'grep',
+      'execute_command',
+      'get_process_output',
+      'kill_process',
       'search_web',
       'fetch_url',
-      'search_slack',
-      'read_conversation_history',
-      'list_threads',
-      'get_user',
-      'get_channel_info',
+      'generate_image',
     ],
     modelSettings: { maxOutputTokens: 16_384 },
     stopWhen: stepCountIs(400),
