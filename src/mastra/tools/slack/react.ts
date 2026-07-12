@@ -5,57 +5,54 @@ import { channelContext } from '../../lib/context';
 import { rawId } from '../../lib/ids';
 import { parseSlackMessageUrl } from '../../lib/slack-message';
 
-const reactionFields = {
-  action: z.enum(['add', 'remove']).default('add'),
-  emoji: z.string().min(1).describe('Emoji name without colons.'),
-};
-
 export const reactTool = createTool({
   id: 'react',
   description:
     'Add or remove an emoji reaction on a Slack message by current channel timestamp, channel/message id, or message URL.',
-  inputSchema: z.discriminatedUnion('source', [
-    z.object({
-      source: z.literal('current_channel'),
-      messageId: z.string().min(1).describe('Slack message timestamp.'),
-      ...reactionFields,
-    }),
-    z.object({
-      source: z.literal('id'),
-      channelId: z.string().min(1).describe('Slack channel id.'),
-      messageId: z.string().min(1).describe('Slack message timestamp.'),
-      ...reactionFields,
-    }),
-    z.object({
-      source: z.literal('url'),
-      url: z.url().describe('Slack message URL.'),
-      ...reactionFields,
-    }),
-  ]),
-  execute: async (input, context) => {
-    const target =
-      input.source === 'url'
-        ? parseSlackMessageUrl(input.url)
-        : {
-            channel:
-              input.source === 'id'
-                ? rawId(input.channelId)
-                : rawId(
-                    channelContext(context?.requestContext).channelId ?? ''
-                  ),
-            ts: input.messageId,
-          };
+  inputSchema: z.object({
+    channelId: z
+      .string()
+      .optional()
+      .describe(
+        'Slack channel id. Defaults to the current channel if omitted.'
+      ),
+    messageId: z
+      .string()
+      .optional()
+      .describe('Slack message timestamp. Required unless url is given.'),
+    url: z
+      .url()
+      .optional()
+      .describe('Slack message URL, instead of channelId/messageId.'),
+    action: z.enum(['add', 'remove']).default('add'),
+    emoji: z.string().min(1).describe('Emoji name without colons.'),
+  }),
+  execute: async (
+    { channelId, messageId, url, action, emoji: emojiInput },
+    context
+  ) => {
+    const target = url
+      ? parseSlackMessageUrl(url)
+      : {
+          channel: rawId(
+            channelId ?? channelContext(context?.requestContext).channelId ?? ''
+          ),
+          ts: messageId,
+        };
     if (!target.channel) {
       throw new Error('No channel available for react.');
     }
+    if (!target.ts) {
+      throw new Error('Pass messageId or url.');
+    }
 
-    const emoji = input.emoji.replaceAll(':', '');
+    const emoji = emojiInput.replaceAll(':', '');
     const request = {
       channel: target.channel,
       name: emoji,
       timestamp: target.ts,
     };
-    if (input.action === 'remove') {
+    if (action === 'remove') {
       await slack.webClient.reactions.remove(request);
       return {
         success: true,

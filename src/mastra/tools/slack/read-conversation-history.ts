@@ -9,65 +9,36 @@ export const readConversationHistoryTool = createTool({
   id: 'read_conversation_history',
   description:
     'Read recent raw messages from any Slack channel or thread the bot can access when exact wording matters. For a long thread, prefer summarize_thread so the full transcript stays out of model context.',
-  inputSchema: z.discriminatedUnion('source', [
-    z.object({
-      source: z.literal('current_thread'),
-      limit: z.coerce.number().int().min(1).max(200).default(40),
-      cursor: z
-        .string()
-        .optional()
-        .describe('Slack pagination cursor from a previous response.'),
-    }),
-    z.object({
-      source: z.literal('thread'),
-      threadId: z.string().min(1).describe('Thread id (slack:C...:ts).'),
-      limit: z.coerce.number().int().min(1).max(200).default(40),
-      cursor: z
-        .string()
-        .optional()
-        .describe('Slack pagination cursor from a previous response.'),
-    }),
-    z.object({
-      source: z.literal('channel'),
-      channelId: z.string().min(1).describe('Channel id (slack:C...).'),
-      limit: z.coerce.number().int().min(1).max(200).default(40),
-      cursor: z
-        .string()
-        .optional()
-        .describe('Slack pagination cursor from a previous response.'),
-    }),
-  ]),
-  execute: async (input, context) => {
+  inputSchema: z.object({
+    channelId: z
+      .string()
+      .optional()
+      .describe('Channel id (slack:C...) to read channel-level history.'),
+    threadId: z
+      .string()
+      .optional()
+      .describe('Thread id (slack:C...:ts). Defaults to the current thread.'),
+    limit: z.coerce.number().int().min(1).max(200).default(40),
+    cursor: z
+      .string()
+      .optional()
+      .describe('Slack pagination cursor from a previous response.'),
+  }),
+  execute: async ({ channelId, threadId, limit, cursor }, context) => {
     const ctx = channelContext(context?.requestContext);
-    let tid: string | undefined;
-    if (input.source === 'thread') {
-      tid = input.threadId;
-    } else if (input.source === 'current_thread') {
-      tid = ctx.threadId;
-    }
-
-    let resolvedChannelId: string | undefined;
-    if (input.source === 'channel') {
-      resolvedChannelId = input.channelId;
-    } else if (tid) {
-      resolvedChannelId = slack.decodeThreadId(tid).channel;
-    }
+    const tid = threadId ?? (channelId ? undefined : ctx.threadId);
+    const resolvedChannelId =
+      channelId ?? (tid ? slack.decodeThreadId(tid).channel : undefined);
     if (!resolvedChannelId) {
-      throw new Error('No channel or thread available to read.');
+      throw new Error('Pass channelId or threadId, or run inside a thread.');
     }
 
     const chId = chatChannelId(resolvedChannelId);
     await joinChannel(chId);
 
     const result = tid
-      ? await slack.fetchMessages(tid, {
-          limit: input.limit,
-          cursor: input.cursor,
-        })
-      : await slack.fetchChannelMessages(chId, {
-          limit: input.limit,
-          cursor: input.cursor,
-        });
+      ? await slack.fetchMessages(tid, { limit, cursor })
+      : await slack.fetchChannelMessages(chId, { limit, cursor });
 
     return {
       success: true,
