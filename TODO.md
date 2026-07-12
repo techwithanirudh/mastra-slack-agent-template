@@ -66,6 +66,14 @@ instead of a manual diff every time.
 - [ ] Give clearer live indication of turn state in Slack: both that a response
   is still being processed, and, separately, a clear signal once the agent has
   fully stopped (a distinct UX gap raised independently).
+- [ ] Test whether killing the process mid-`wait` (restart `mastra dev` while
+  a `wait` call is pending) still resumes the thread when it should fire.
+  Suspect it won't: `wait.ts` schedules the resume with a plain in-process
+  `setTimeout`, not anything durable, so a restart before it fires loses the
+  timer entirely and the thread hangs forever with no error. If confirmed,
+  needs a durable scheduling mechanism (e.g. route through the same
+  `create_scheduled_task` cron infrastructure, one-shot) instead of
+  `setTimeout`.
 
 ## Roadmap
 
@@ -100,23 +108,39 @@ instead of a manual diff every time.
   (GitHub events, AgentMail) instead of only polling on a cron schedule. `wait`
   (shipped, see Recently completed) covers "pause and resume later"; this is
   the "react to an external trigger" half.
-- [ ] Background subagents. SHIPPED (needs live Slack verification). Enabled
-  `backgroundTasks` on the `Mastra` instance and opted `agent-research`,
-  `agent-explore`, `agent-execute` into it via `backgroundTasks.tools` on the
-  orchestrator (`agents/orchestrator.ts`). Re-verified against the current
-  `@mastra/core` (1.50.1, up from whatever `chunk-JGDMZZAO.js` was) that
-  `AgentChannels` still never sets `untilIdle` for live-triggered turns, so
-  the original gap was real: a background subagent's result would write to
-  memory and then silently vanish from the user's view. Bridged it by
-  registering `backgroundTasks.onTaskComplete`/`onTaskFailed` in `index.ts`,
-  which call `orchestrator.sendSignal(..., { ifIdle: { behavior: 'wake' } })`
-  on the task's `threadId`/`resourceId`, the same wake pattern `wait.ts` and
-  scheduled tasks use. One open gap: unlike `wait.ts`/`create_scheduled_task`,
-  this wake has no live `requestContext` to thread through (`BackgroundTask`
-  doesn't carry one), so it relies entirely on `AgentChannels`' own thread-state
-  reconstruction plus the existing Slack adapter recipient-stash fix. Needs a
-  live test (delegate to a subagent, confirm the result posts back to the
-  Slack thread) before treating this as fully done.
+- [ ] Background subagents: REVERTED, wrong shape for this. Shipped once
+  (blanket `backgroundTasks.tools` on the orchestrator for `agent-research`/
+  `agent-explore`/`agent-execute`, `onTaskComplete`/`onTaskFailed` waking the
+  thread via `sendSignal`), then tested live: real delegation calls took
+  ~3 seconds (`durationMs: 3197`, `2981` in actual logs), far too fast to
+  need backgrounding, and the model had no way to check on a backgrounded
+  delegation (tried a sandbox-process `pid` that doesn't exist for this
+  system) — confusion with no upside. Pulled the `backgroundTasks` config
+  from `index.ts` and `agents/orchestrator.ts`.
+  Checked how Mastra's own coding agent (`mastracode`, in `mastra-ai/mastra`)
+  does this before reverting blind: it does **not** use `Agent.agents` +
+  `backgroundTasks` for concurrent subagents at all — `sdk/src/agents/modes/`
+  (`build.ts`/`explore.ts`/`plan.ts`) is mode-switching on one agent, not
+  parallel background delegation. So this isn't "we did it wrong", it's "this
+  mechanism isn't what backgrounding is for here."
+  What Mastra actually ships for "let the model choose to background a slow
+  call," matching Claude Code's `run_in_background` on its Bash tool exactly:
+  `execute_command`'s optional `background: boolean` input (only appears in
+  the tool schema when `sandbox.processes` exists — see
+  `@mastra/core/workspace/tools/execute-command.d.ts`), paired with
+  `get_process_output` and `kill_process` tools and a `SandboxProcessManager`
+  abstract class (`spawn`/`list`/`get`/`kill`) with a working
+  `LocalProcessManager` reference implementation. This is the real fit: the
+  actually-slow things in that live test were sandbox shell commands
+  (`agent-browser`, `convert`), not subagent delegations.
+  Not wired up here: `@mastra/e2b` has no `SandboxProcessManager`
+  implementation (confirmed, `grep -rn processes node_modules/@mastra/e2b`
+  returns nothing), so `execute_command`'s schema never gets the `background`
+  param and `get_process_output`/`kill_process` aren't available. Implementing
+  an `E2BProcessManager extends SandboxProcessManager` (E2B's own SDK already
+  supports background commands with a pid/wait/kill handle) is the actual next
+  step if per-call background choice is still wanted, not resurrecting
+  subagent-level `backgroundTasks`.
 - [ ] Let the orchestrator choose which model a subagent runs with per
   delegation, instead of each subagent having one fixed model. RESEARCHED
   (deep dive on `@mastra/core/agent-controller`, confirmed by reading source,

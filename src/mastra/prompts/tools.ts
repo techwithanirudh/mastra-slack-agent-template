@@ -2,6 +2,13 @@ import { sandbox } from '../config';
 
 export const toolsPrompt = `\
 <tools>
+<note>
+Not every tool described below is in your tool list yet. Less-common tools load
+on demand: if a tool mentioned here isn't currently available to you, call
+search_tools with a query describing what you need, it loads automatically. Do
+not tell the user a tool is unavailable without trying search_tools first.
+</note>
+
 <tool>
 <name>agent-research / agent-explore / agent-execute</name>
 <note>
@@ -76,8 +83,8 @@ Either way, tell the user to invite the bot there.</note>
 </tool>
 
 <tool>
-<name>create_canvas / read_canvas / update_canvas</name>
-<note>Canvases are Slack's persistent markdown documents (the channel's Canvas tab). create_canvas fails if the channel already has one, use update_canvas instead. update_canvas replaces the whole canvas by default; pass mode "append" or "prepend" to add content without discarding what's there. Get a canvasId from create_canvas's result or the channel's canvas file id.</note>
+<name>create_canvas / create_channel_canvas / read_canvas / edit_canvas / delete_canvas / lookup_canvas_sections</name>
+<note>Canvases are Slack's persistent markdown documents. create_canvas makes a standalone canvas (optionally shared into a channel); create_channel_canvas makes the channel's own Canvas tab and fails if that channel already has one, use edit_canvas to change it instead. edit_canvas applies ordered section-level changes (insert_after, insert_before, insert_at_start, insert_at_end, replace, delete); use lookup_canvas_sections first to find section ids by header type or contained text. Get a canvasId from create_canvas/create_channel_canvas's result or the channel's canvas file id.</note>
 </tool>
 
 <tool>
@@ -119,9 +126,9 @@ Images (.png, .jpg, .webp, etc.) are delivered to you visually. Describe only wh
 <name>execute_command</name>
 <description>Run commands in the persistent E2B sandbox.</description>
 <note>
-The sandbox pauses after ${sandbox.timeout / 60_000} minutes of inactivity. That clock only resets between steps, not while a single command is still running, so keep any foreground timeout under ${sandbox.timeout / 60_000} minutes (${sandbox.timeout / 1000}s).
+The sandbox pauses after ${sandbox.timeout / 60_000} minutes of inactivity. That clock only resets between steps, not while a single command is still running, so keep any single execute_command call under ${sandbox.timeout / 60_000} minutes (${sandbox.timeout / 1000}s). There is no background flag; execute_command always runs and waits for its command to finish.
 
-For anything that genuinely takes longer (data processing, big builds, long-running jobs), start it with background: true and poll it periodically with get_process_output. Each poll is its own step and resets the ${sandbox.timeout / 60_000}-minute clock, making this the way to safely run something for 15 to 20+ minutes.
+For a job that genuinely takes longer, launch it detached (e.g. \`nohup long-job > out.log 2>&1 & echo $!\` or a similar disown pattern) in one call, then poll its progress (checking the pid, tailing out.log, or checking for a completion marker) in later calls. Each call is its own step and resets the ${sandbox.timeout / 60_000}-minute clock, so this is how to safely span 15-20+ minutes of real work. Use wait between polls instead of looping immediately.
 
 Do not call execute_command directly for user-requested build or change work. Delegate to agent-execute whenever a command needs to run for the user, including package installs, builds, tests, servers, scripts, previews, deploys, and file mutations. agent-execute owns execution and reports back for your final response.
 </note>
