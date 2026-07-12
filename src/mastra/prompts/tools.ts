@@ -2,12 +2,15 @@ import { sandbox } from '../config';
 
 export const toolsPrompt = `\
 <tools>
+<tool>
+<name>search_tools</name>
+<description>Load additional tools on demand by searching for what you need.</description>
 <note>
-Not every tool described below is in your tool list yet. Less-common tools load
-on demand: if a tool mentioned here isn't currently available to you, call
-search_tools with a query describing what you need, it loads automatically. Do
-not tell the user a tool is unavailable without trying search_tools first.
+This tool exists right now, in your current tool list, whether or not it appears above the fold: not every tool described in this file is loaded by default. The <offloaded> section below lists tools that load only when you call search_tools with a query describing what you need; matching tools activate automatically, no separate load step.
+
+If a tool mentioned anywhere in this file isn't currently available to you, that almost always means it's listed under <offloaded> and you haven't called search_tools yet, not that it's missing. Call search_tools first. Never tell the user a described tool is unavailable without trying that first.
 </note>
+</tool>
 
 <tool>
 <name>agent-research / agent-explore / agent-execute</name>
@@ -67,24 +70,15 @@ If unavailable because the user did not @mention you, use web search and say you
 </tool>
 
 <tool>
-<name>get_slack_file</name>
-<description>Download a Slack file (an earlier upload, snippet, image, canvas, or any type) into the sandbox by its Slack file id (e.g. F0123ABCD).</description>
-<note>When saving images, ALWAYS preserve or provide a useful filename extension like .png, .jpg, .jpeg, or .webp so read_file can infer MIME type.</note>
-</tool>
-
-<tool>
 <name>post_message</name>
 <note>Defaults to the current Slack thread. Pass target only when posting somewhere else. Your streamed reply already covers the current thread, so avoid posting the same message twice.
 
+Every post shows who requested it automatically as the Slack display name (e.g. "username [Bot Name]"), you don't need to add that yourself in the message text. There is no way to override or customize this.
+
 Errors:
 channel_not_found usually means the bot isn't a member of that private channel;
-not_in_channel means it hasn't joined yet. 
+not_in_channel means it hasn't joined yet.
 Either way, tell the user to invite the bot there.</note>
-</tool>
-
-<tool>
-<name>create_canvas / create_channel_canvas / read_canvas / edit_canvas / delete_canvas / lookup_canvas_sections</name>
-<note>Canvases are Slack's persistent markdown documents. create_canvas makes a standalone canvas (optionally shared into a channel); create_channel_canvas makes the channel's own Canvas tab and fails if that channel already has one, use edit_canvas to change it instead. edit_canvas applies ordered section-level changes (insert_after, insert_before, insert_at_start, insert_at_end, replace, delete); use lookup_canvas_sections first to find section ids by header type or contained text. Get a canvasId from create_canvas/create_channel_canvas's result or the channel's canvas file id.</note>
 </tool>
 
 <tool>
@@ -92,10 +86,16 @@ Either way, tell the user to invite the bot there.</note>
 <note>Use when asked to stay quiet or let people talk. You can still be @mentioned back.</note>
 </tool>
 
-<tool>
-<name>leave_channel</name>
-<note>Use only when explicitly asked to leave the channel. Call it with no other text and no other tool calls in the same response, it ends the turn, like skip.</note>
-</tool>
+<offloaded>
+Search-gated: not in your tool list until you call search_tools with a query naming what you need. Each one's own description explains its usage once loaded; this is only so you know it exists and what to search for.
+
+- list_threads: list recent threads in a channel.
+- get_channel_info: channel metadata (name, member count, DM status, visibility).
+- get_slack_file: download a Slack file/image/canvas by its file id.
+- leave_channel: leave the current channel entirely (only when explicitly asked).
+- create_canvas / create_channel_canvas: make a standalone or channel Canvas.
+- read_canvas / edit_canvas / delete_canvas / lookup_canvas_sections: read, section-edit, delete, or find sections in an existing canvas. Look up section ids before editing.
+</offloaded>
 
 <tool>
 <name>skip</name>

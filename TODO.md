@@ -63,9 +63,6 @@ instead of a manual diff every time.
 - [ ] Tool cards stop rendering properly in Slack past roughly 50-60 steps in a
   turn (reports vary: ~50 for execute/other agents, ~60 reported separately for
   subagents). May be one root cause or two; investigate before assuming.
-- [ ] Give clearer live indication of turn state in Slack: both that a response
-  is still being processed, and, separately, a clear signal once the agent has
-  fully stopped (a distinct UX gap raised independently).
 - [ ] Test whether killing the process mid-`wait` (restart `mastra dev` while
   a `wait` call is pending) still resumes the thread when it should fire.
   Suspect it won't: `wait.ts` schedules the resume with a plain in-process
@@ -309,6 +306,10 @@ for now per decision, not lost.
 
 ## Recently completed
 
+- Live turn-state indication in Slack via reactions on the triggering message:
+  `hourglass_flowing_sand` while processing, swapped for `white_check_mark` on
+  success or `x` on an uncaught error (`chat/handlers.ts`'s
+  `withWorkingReaction`).
 - Split tools into an always-loaded set and a search-loaded set via
   `ToolSearchProcessor`, deferring less-common tools (`list_threads`,
   `get_channel_info`, `post_message`, canvas tools, MCP tools, etc.) until the

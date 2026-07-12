@@ -27,7 +27,18 @@ function opencode(model: string): LanguageModelV3 {
   });
 }
 
+function inference(id: `${string}/${string}`): ModelConfig {
+  return {
+    id: `openrouter/${id}`,
+    apiKey: env.INFERENCE_API_KEY,
+    url: env.INFERENCE_BASE_URL,
+  };
+}
+
 export const orchestrator: ModelWithRetries[] = [
+  ...(env.INFERENCE_API_KEY && env.INFERENCE_BASE_URL
+    ? [{ model: inference('z-ai/glm-5.2'), maxRetries: 3 }]
+    : []),
   {
     model: openrouter('minimax/minimax-m3'),
     maxRetries: 3,
@@ -41,6 +52,9 @@ export const orchestrator: ModelWithRetries[] = [
 ];
 
 export const summarizer: ModelWithRetries[] = [
+  ...(env.INFERENCE_API_KEY && env.INFERENCE_BASE_URL
+    ? [{ model: inference('deepseek/deepseek-v4-flash'), maxRetries: 3 }]
+    : []),
   {
     model: openrouter('google/gemini-3.1-flash-lite'),
     maxRetries: 3,
@@ -51,6 +65,9 @@ export const summarizer: ModelWithRetries[] = [
 ];
 
 export const scout: ModelWithRetries[] = [
+  ...(env.INFERENCE_API_KEY && env.INFERENCE_BASE_URL
+    ? [{ model: inference('deepseek/deepseek-v4-flash'), maxRetries: 3 }]
+    : []),
   {
     model: openrouter('deepseek/deepseek-v4-flash'),
     maxRetries: 3,
@@ -61,6 +78,9 @@ export const scout: ModelWithRetries[] = [
 ];
 
 export const explorer: ModelWithRetries[] = [
+  ...(env.INFERENCE_API_KEY && env.INFERENCE_BASE_URL
+    ? [{ model: inference('moonshotai/kimi-k2.6'), maxRetries: 3 }]
+    : []),
   {
     model: openrouter('minimax/minimax-m3'),
     maxRetries: 3,
@@ -71,6 +91,9 @@ export const explorer: ModelWithRetries[] = [
 ];
 
 export const executor: ModelWithRetries[] = [
+  ...(env.INFERENCE_API_KEY && env.INFERENCE_BASE_URL
+    ? [{ model: inference('z-ai/glm-5.2'), maxRetries: 3 }]
+    : []),
   ...(env.OPENCODE_API_KEY
     ? [{ model: opencode('kimi-k2.7-code'), maxRetries: 3 }]
     : []),

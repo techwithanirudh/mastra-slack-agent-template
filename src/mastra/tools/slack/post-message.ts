@@ -1,8 +1,29 @@
+import { SlackFormatConverter } from '@chat-adapter/slack';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
+import { slack } from '../../chat/client';
+import { chat } from '../../chat/instance';
 import { resolveTarget, targetSchema } from '../../chat/target';
 import { channelContext } from '../../lib/context';
+import { rawId } from '../../lib/ids';
 import { joinChannel } from './utils';
+
+const markdownConverter = new SlackFormatConverter();
+
+async function resolveChannelAndThread(resolved: {
+  type: 'thread' | 'channel' | 'user';
+  id: string;
+}): Promise<{ channel: string; threadTs?: string }> {
+  if (resolved.type === 'thread') {
+    const { channel, threadTs } = slack.decodeThreadId(resolved.id);
+    return { channel, threadTs };
+  }
+  if (resolved.type === 'channel') {
+    return { channel: rawId(resolved.id) };
+  }
+  const dm = await resolveTarget(resolved);
+  return { channel: rawId(dm.id) };
+}
 
 export const postMessageTool = createTool({
   id: 'post_message',
@@ -29,13 +50,26 @@ export const postMessageTool = createTool({
       if (resolved.type !== 'user') {
         await joinChannel(resolved.id);
       }
-      const destination = await resolveTarget(resolved);
-      const sent = await destination.post({ markdown: message });
+      const { channel, threadTs } = await resolveChannelAndThread(resolved);
+      const requesterUser = ctx.userId
+        ? await chat()
+            .getUser(ctx.userId)
+            .catch(() => null)
+        : null;
+      const requester = requesterUser?.userName ?? ctx.userName;
+      const name = ctx.botUserName ?? 'bot';
+      const username = requester ? `${requester} [${name}]` : name;
+      const sent = await slack.webClient.chat.postMessage({
+        channel,
+        ...(threadTs ? { thread_ts: threadTs } : {}),
+        ...markdownConverter.toSlackPayload({ markdown: message }),
+        username,
+      });
       return {
         success: true,
-        messageId: sent.id,
-        threadId: sent.threadId,
-        message: `Posted to ${resolved.type} ${resolved.id}.`,
+        messageId: sent.ts,
+        threadId: threadTs,
+        message: `Posted to ${resolved.type} ${resolved.id} as "${username}".`,
       };
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
