@@ -2,7 +2,13 @@ import { z } from 'zod';
 import type { channelContext } from '../../lib/context';
 import { rawId } from '../../lib/ids';
 
-export const canvasIdSchema = z.string().min(1).describe('Slack canvas id.');
+export const canvasIdSchema = z
+  .string()
+  .regex(
+    /^F[A-Z0-9]+$/,
+    'Must be a bare Slack file id (e.g. F0123ABCD), not a URL or permalink.'
+  )
+  .describe('Slack canvas id, e.g. F0123ABCD.');
 
 export function assertCanManageChannel({
   channelId,

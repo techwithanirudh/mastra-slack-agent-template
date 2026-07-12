@@ -63,6 +63,23 @@ instead of a manual diff every time.
 - [ ] Tool cards stop rendering properly in Slack past roughly 50-60 steps in a
   turn (reports vary: ~50 for execute/other agents, ~60 reported separately for
   subagents). May be one root cause or two; investigate before assuming.
+  Reconfirmed live: agent-execute's task card stops continuing to update after
+  some tool calls partway through a run. Not yet root-caused; next step is
+  querying `mastra api trace` against the running Studio instance
+  (localhost:4111) for the specific run to see where the chunk stream actually
+  stops versus where Slack stops rendering it, not guessed from logs alone.
+- [ ] `get_slack_file` throws a false "Downloaded X but expected Y" error for
+  canvases specifically, reproduced live (`Downloaded 11 KB but expected 9 KB`
+  on a real canvas file id). Root cause confirmed: canvases are live, editable
+  documents; `files.info`'s `size` field is a stale snapshot, not the current
+  export size, so the strict byte-count check added for resumable-download
+  integrity fails for them specifically (static uploads are unaffected). A fix
+  (skip `files.info`'s size for canvases, use a fresh HEAD-request probe
+  instead, and don't throw the final strict-match error for them) was built
+  and verified working this session, then deliberately left unapplied/reverted
+  by request. `read_canvas` no longer needs this path (see Recently completed,
+  it downloads independently now), but this bug is still live for anyone using
+  `get_slack_file` directly on a canvas id.
 - [ ] Test whether killing the process mid-`wait` (restart `mastra dev` while
   a `wait` call is pending) still resumes the thread when it should fire.
   Suspect it won't: `wait.ts` schedules the resume with a plain in-process
@@ -300,12 +317,74 @@ for now per decision, not lost.
 - [ ] Test mentions, DMs, tools, files, and scheduled tasks in Slack.
 - [ ] Test the `wait` tool in a real Slack thread: delayed resume fires, and
   the resumed message renders in the expected place (thread vs channel).
-- [ ] Test background subagent delegation (`agent-research`/`agent-explore`/
-  `agent-execute`): confirm the result actually posts back to the Slack
-  thread once the background task completes, not just written to memory.
+- [ ] Test `read_canvas` against a real canvas after its rewrite (now fetches
+  the HTML export directly instead of the never-populated `files.info.content`
+  field). Confirm it actually returns readable HTML for a real canvas id, not
+  just that it no longer throws "no readable content".
+- [ ] Test `upload_file`'s new `fileId` return value against a real upload;
+  confirm the extracted id is correct and usable with `get_slack_file` or
+  embeddable in a canvas reference.
+- [ ] Test the `chat:write.customize`-gated post_message attribution
+  (`{username} [{bot name}]`) after reinstalling the Slack app with the new
+  scope; confirm it actually renders instead of silently falling back to the
+  bot's default identity.
+- [ ] Test agent-browser + CloakBrowser against a real target site in a fresh
+  Slack thread (fresh sandbox, post-rebuild) to confirm the wrapper hardening
+  and per-session fingerprint caching work outside the local reproduction.
+- [ ] Test `list_canvases` against a real workspace/channel, both with and
+  without a `channelId` filter, to confirm `files.list({types: 'canvas'})`
+  actually returns canvases (not just typechecks) and that `canvasId`/`title`
+  come back populated.
+- [ ] Test a canvas edit/create that includes a user or channel mention using
+  the new `![](@USER_ID)`/`![](#CHANNEL_ID)` syntax, confirm it renders as a
+  real clickable mention in the canvas, not literal text.
 
 ## Recently completed
 
+- Rewrote `read_canvas` to fetch a canvas's HTML export directly (same
+  `url_private_download` mechanism as `get_slack_file`) instead of reading
+  `files.info`'s `content` field, which Slack never populates for canvases.
+  It's a plain-text-snippet field, not a canvas one; this was a root-cause
+  bug, not a flaky edge case, "no readable content" fired on every canvas.
+  Now returns HTML directly (canvases don't have a markdown export), no
+  sandbox round-trip needed since it's a read-and-return, not a download.
+- Added `list_canvases`, a real canvas-listing tool using `files.list({types:
+  'canvas'})`. Slack's own Canvases docs confirm this is the documented way to
+  list canvases; `@slack/web-api`'s `FilesListArguments.types` is typed as a
+  plain `string`, not a restrictive union, so no cast or `apiCall` escape
+  hatch was needed, the earlier "no listing API exists" conclusion was based
+  on a stale reading of `types`, not a real API gap.
+- Documented canvas-specific mention syntax on `create_canvas`, `edit_canvas`,
+  and `prompts/tools.ts`: canvas markdown mentions are `![](@USER_ID)` and
+  `![](#CHANNEL_ID)`, not the normal `<@U123>` message mention format, which
+  silently renders as literal plain text inside a canvas. Confirmed via
+  Slack's own Canvases docs and an independent Stack Overflow report of the
+  same gotcha.
+- `isSlackHost` (Slack-hosted URL check on `get_slack_file`/`read_canvas`) was
+  extracted into `tools/slack/utils.ts`, then removed entirely per explicit
+  request (MITM on Slack's own API response URLs judged not a real concern
+  for this template). Neither tool has this check anymore.
+- Tightened `canvasIdSchema` (shared by all canvas tools) to reject anything
+  that isn't a bare Slack file id (`/^F[A-Z0-9]+$/`), rejecting a URL or
+  permalink outright at the schema level instead of trusting downstream code.
+- `upload_file` now returns the uploaded file's Slack `fileId`, extracted
+  from the returned attachment's private URL (the Chat SDK's `Attachment`
+  type doesn't expose the id directly, only the URL, which embeds it) so the
+  model can reference an upload afterward (e.g. `get_slack_file`, embedding a
+  link in a canvas).
+- Diagnosed and reproduced the reported CloakBrowser + agent-browser
+  breakage locally rather than guessing: could not reproduce the actual bug
+  with the exact same command sequence against a clean setup, which points at
+  that specific live sandbox's stale state (sandboxes persist per-thread;
+  rebuilding the template doesn't reach an already-running one) rather than a
+  wrapper design flaw. Found and fixed two real things while investigating:
+  the wrapper had no error handling (a failed CloakBrowser resolve would
+  silently launch with garbage env vars instead of falling back cleanly), and
+  `get_default_stealth_args()` returns a fresh random fingerprint on every
+  call, which the wrapper was re-resolving on every single invocation instead
+  of once per session, a real stealth-consistency bug. Both fixed and verified
+  end-to-end locally (session-scoped fingerprint caching, clean fallback on
+  resolve failure) before rebuilding the template.
 - Live turn-state indication in Slack via reactions on the triggering message:
   `hourglass_flowing_sand` while processing, swapped for `white_check_mark` on
   success or `x` on an uncaught error (`chat/handlers.ts`'s

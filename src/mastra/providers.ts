@@ -39,6 +39,10 @@ export const orchestrator: ModelWithRetries[] = [
   ...(env.INFERENCE_API_KEY && env.INFERENCE_BASE_URL
     ? [{ model: inference('z-ai/glm-5.2'), maxRetries: 3 }]
     : []),
+
+  ...(env.INFERENCE_API_KEY && env.INFERENCE_BASE_URL
+    ? [{ model: inference('moonshotai/kimi-k2.7-code'), maxRetries: 3 }]
+    : []),
   {
     model: openrouter('minimax/minimax-m3'),
     maxRetries: 3,
@@ -93,6 +97,9 @@ export const explorer: ModelWithRetries[] = [
 export const executor: ModelWithRetries[] = [
   ...(env.INFERENCE_API_KEY && env.INFERENCE_BASE_URL
     ? [{ model: inference('z-ai/glm-5.2'), maxRetries: 3 }]
+    : []),
+  ...(env.INFERENCE_API_KEY && env.INFERENCE_BASE_URL
+    ? [{ model: inference('moonshotai/kimi-k2.7-code'), maxRetries: 3 }]
     : []),
   ...(env.OPENCODE_API_KEY
     ? [{ model: opencode('kimi-k2.7-code'), maxRetries: 3 }]
