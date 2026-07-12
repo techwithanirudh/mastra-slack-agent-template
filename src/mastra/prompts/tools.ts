@@ -91,10 +91,11 @@ Search-gated: not in your tool list until you call search_tools with a query nam
 
 - list_threads: list recent threads in a channel.
 - get_channel_info: channel metadata (name, member count, DM status, visibility).
-- get_slack_file: download a Slack file/image/canvas by its file id.
+- get_slack_file: download a Slack file/image by its file id. Not for canvas content, use read_canvas.
 - leave_channel: leave the current channel entirely (only when explicitly asked).
+- list_canvases: list standalone and channel canvases, optionally filtered to a channel.
 - create_canvas / create_channel_canvas: make a standalone or channel Canvas.
-- read_canvas / edit_canvas / delete_canvas / lookup_canvas_sections: read, section-edit, delete, or find sections in an existing canvas. Look up section ids before editing.
+- read_canvas / edit_canvas / delete_canvas / lookup_canvas_sections: read, section-edit, delete, or find sections in an existing canvas. read_canvas returns Slack's HTML canvas export, not markdown. Look up section ids before editing. Canvas markdown mentions use ![](@USER_ID) for a user and ![](#CHANNEL_ID) for a channel, not the normal <@U123> message mention format, which renders as literal plain text in a canvas.
 </offloaded>
 
 <tool>

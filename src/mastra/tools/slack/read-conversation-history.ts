@@ -12,7 +12,7 @@ export const readConversationHistoryTool = createTool({
   inputSchema: z.discriminatedUnion('source', [
     z.object({
       source: z.literal('current_thread'),
-      limit: z.number().int().min(1).max(200).default(40),
+      limit: z.coerce.number().int().min(1).max(200).default(40),
       cursor: z
         .string()
         .optional()
@@ -21,7 +21,7 @@ export const readConversationHistoryTool = createTool({
     z.object({
       source: z.literal('thread'),
       threadId: z.string().min(1).describe('Thread id (slack:C...:ts).'),
-      limit: z.number().int().min(1).max(200).default(40),
+      limit: z.coerce.number().int().min(1).max(200).default(40),
       cursor: z
         .string()
         .optional()
@@ -30,7 +30,7 @@ export const readConversationHistoryTool = createTool({
     z.object({
       source: z.literal('channel'),
       channelId: z.string().min(1).describe('Channel id (slack:C...).'),
-      limit: z.number().int().min(1).max(200).default(40),
+      limit: z.coerce.number().int().min(1).max(200).default(40),
       cursor: z
         .string()
         .optional()

@@ -14,7 +14,7 @@ export const listThreadsTool = createTool({
       .string()
       .optional()
       .describe('Channel id (slack:C...); defaults to the current channel.'),
-    limit: z.number().int().min(1).max(100).default(20),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
     cursor: z.string().optional(),
   }),
   execute: async ({ channelId, limit, cursor }, context) => {

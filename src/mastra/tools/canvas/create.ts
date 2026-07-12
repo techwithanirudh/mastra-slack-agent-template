@@ -19,7 +19,9 @@ export const createCanvasTool = createTool({
       .string()
       .min(1)
       .optional()
-      .describe('Initial markdown canvas content.'),
+      .describe(
+        'Initial markdown canvas content. Mentions use ![](@USER_ID) and ![](#CHANNEL_ID), not <@U123>.'
+      ),
   }),
   execute: async ({ title, channelId, markdown }, context) => {
     const ctx = channelContext(context?.requestContext);

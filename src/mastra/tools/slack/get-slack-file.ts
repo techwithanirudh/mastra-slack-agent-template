@@ -20,28 +20,10 @@ function throwIfAborted(signal?: AbortSignal): void {
   }
 }
 
-// The download url comes from Slack's files.info, so it is always Slack-hosted.
-// Assert it anyway before attaching the bot token, to defend against a spoofed
-// files.info response pointing the credential at another host.
-function isSlackHost(rawUrl: string): boolean {
-  let host: string;
-  try {
-    host = new URL(rawUrl).hostname.toLowerCase();
-  } catch {
-    return false;
-  }
-  return (
-    host === 'slack.com' ||
-    host.endsWith('.slack.com') ||
-    host === 'slack-files.com' ||
-    host.endsWith('.slack-files.com')
-  );
-}
-
 export const getSlackFileTool = createTool({
   id: 'get_slack_file',
   description:
-    'Download a Slack file (upload, snippet, image, canvas, any type) into the sandbox so you can read or process it. Takes a Slack file id (e.g. F0123ABCD), which you can get from a message attachment or a Slack file permalink. Not for arbitrary web URLs; use fetch_url for those. When downloading images, always pass or preserve a useful extension like .png, .jpg, .jpeg, or .webp so read_file can infer the MIME type.',
+    'Download a Slack file (upload, snippet, image, any type) into the sandbox so you can read or process it. Takes a Slack file id (e.g. F0123ABCD), which you can get from a message attachment or a Slack file permalink. Not for arbitrary web URLs; use fetch_url for those. Not for reading canvas content, use read_canvas instead; When downloading images, always pass or preserve a useful extension like .png, .jpg, .jpeg, or .webp so read_file can infer the MIME type.',
   inputSchema: z.object({
     file: z
       .string()
@@ -75,12 +57,6 @@ export const getSlackFileTool = createTool({
         `Could not resolve a download URL for Slack file ${fileId}. It may have been deleted, or the bot may not have access to it.`
       );
     }
-    if (!isSlackHost(url)) {
-      throw new Error(
-        `Refusing to download from a non-Slack host: ${url}. get_slack_file only downloads Slack-hosted files (it authenticates with the workspace token).`
-      );
-    }
-
     const defaultName = info?.name ?? fileId;
     const sanitized = (filename ?? defaultName).replace(/[^\w.-]+/g, '_');
     const name =

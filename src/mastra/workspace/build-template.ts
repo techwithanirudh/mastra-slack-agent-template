@@ -56,10 +56,38 @@ async function main(): Promise<void> {
         'mv /usr/local/bin/agent-browser /usr/local/bin/agent-browser-real',
         `cat > /usr/local/bin/agent-browser <<'CLOAKBROWSER_WRAPPER'
 #!/bin/bash
-BINARY_PATH=$(python3 -c "from cloakbrowser.download import ensure_binary; print(ensure_binary())")
-STEALTH_ARGS=$(python3 -c "from cloakbrowser.config import get_default_stealth_args; print(','.join(get_default_stealth_args()))")
-export AGENT_BROWSER_EXECUTABLE_PATH="$BINARY_PATH"
-export AGENT_BROWSER_ARGS="$STEALTH_ARGS"
+# A failed resolve here (network hiccup, CloakBrowser's own update-check call)
+# must not silently launch agent-browser-real with a garbage executable path;
+# fall back to the plain, non-stealth binary instead of a broken one.
+#
+# get_default_stealth_args() returns a fresh random fingerprint on every
+# call. Since this wrapper re-runs on every single agent-browser invocation
+# (not just the one that launches the daemon), naively re-resolving would let
+# a session's fingerprint drift mid-session on a daemon respawn, exactly the
+# inconsistency stealth fingerprinting exists to avoid. Cache it per session
+# instead, so one session keeps one fingerprint for its whole lifetime.
+SESSION="$AGENT_BROWSER_SESSION"
+ARGS=("$@")
+for ((i = 0; i < \${#ARGS[@]}; i++)); do
+  if [ "\${ARGS[$i]}" = "--session" ]; then
+    SESSION="\${ARGS[$((i + 1))]}"
+    break
+  fi
+done
+SESSION="\${SESSION:-default}"
+STEALTH_CACHE="/tmp/cloakbrowser-stealth-args-\${SESSION}"
+
+if BINARY_PATH=$(python3 -c "from cloakbrowser.download import ensure_binary; print(ensure_binary())" 2>/tmp/cloakbrowser-wrapper.log) \
+  && [ -x "$BINARY_PATH" ]; then
+  if [ ! -f "$STEALTH_CACHE" ]; then
+    python3 -c "from cloakbrowser.config import get_default_stealth_args; print(','.join(get_default_stealth_args()))" \
+      >"$STEALTH_CACHE" 2>>/tmp/cloakbrowser-wrapper.log
+  fi
+  export AGENT_BROWSER_EXECUTABLE_PATH="$BINARY_PATH"
+  export AGENT_BROWSER_ARGS="$(cat "$STEALTH_CACHE")"
+else
+  echo "[agent-browser] CloakBrowser binary resolve failed, falling back to the non-stealth browser. See /tmp/cloakbrowser-wrapper.log" >&2
+fi
 exec agent-browser-real "$@"
 CLOAKBROWSER_WRAPPER`,
         'chmod +x /usr/local/bin/agent-browser',
