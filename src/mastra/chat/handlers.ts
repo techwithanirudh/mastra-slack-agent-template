@@ -13,6 +13,36 @@ const actionToken = z.looseObject({
   action_token: z.string().min(1).optional(),
 });
 
+const WORKING_REACTION = 'hourglass_flowing_sand';
+const DONE_REACTION = 'white_check_mark';
+const FAILED_REACTION = 'x';
+
+async function withWorkingReaction(
+  message: Message,
+  run: () => Promise<void>
+): Promise<void> {
+  const { channel } = slack.decodeThreadId(message.threadId);
+  const target = { channel, timestamp: message.id };
+  await slack.webClient.reactions
+    .add({ ...target, name: WORKING_REACTION })
+    .catch(() => undefined);
+  try {
+    await run();
+    await slack.webClient.reactions
+      .add({ ...target, name: DONE_REACTION })
+      .catch(() => undefined);
+  } catch (error) {
+    await slack.webClient.reactions
+      .add({ ...target, name: FAILED_REACTION })
+      .catch(() => undefined);
+    throw error;
+  } finally {
+    await slack.webClient.reactions
+      .remove({ ...target, name: WORKING_REACTION })
+      .catch(() => undefined);
+  }
+}
+
 async function captureSearchToken(thread: Thread, raw: unknown): Promise<void> {
   const parsed = actionToken.safeParse(raw);
   const searchToken = parsed.success ? parsed.data.action_token : undefined;
@@ -54,7 +84,9 @@ async function respond(
     text: message.text,
   });
 
-  await defaultHandler(thread, attachments(message));
+  await withWorkingReaction(message, () =>
+    defaultHandler(thread, attachments(message))
+  );
 }
 
 export async function onMention(
