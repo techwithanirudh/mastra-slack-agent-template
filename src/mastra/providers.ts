@@ -15,6 +15,7 @@ function openrouter(id: `${string}/${string}`): ModelConfig {
   };
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: opencode fallback wiring is intentionally disabled for now.
 function opencode(model: string): LanguageModelV3 {
   const provider = createOpenAICompatible({
     name: 'opencode-go',
@@ -39,9 +40,8 @@ export const orchestrator: ModelWithRetries[] = [
   ...(env.INFERENCE_API_KEY && env.INFERENCE_BASE_URL
     ? [{ model: inference('z-ai/glm-5.2'), maxRetries: 3 }]
     : []),
-
   ...(env.INFERENCE_API_KEY && env.INFERENCE_BASE_URL
-    ? [{ model: inference('moonshotai/kimi-k2.7-code'), maxRetries: 3 }]
+    ? [{ model: inference('moonshotai/kimi-k2.6'), maxRetries: 3 }]
     : []),
   {
     model: openrouter('minimax/minimax-m3'),
@@ -50,9 +50,9 @@ export const orchestrator: ModelWithRetries[] = [
       openrouter: { reasoningEffort: 'medium' },
     },
   },
-  ...(env.OPENCODE_API_KEY
-    ? [{ model: opencode('minimax-m3'), maxRetries: 3 }]
-    : []),
+  // ...(env.OPENCODE_API_KEY
+  //   ? [{ model: opencode('minimax-m3'), maxRetries: 3 }]
+  //   : []),
 ];
 
 export const summarizer: ModelWithRetries[] = [
@@ -63,9 +63,9 @@ export const summarizer: ModelWithRetries[] = [
     model: openrouter('google/gemini-3.1-flash-lite'),
     maxRetries: 3,
   },
-  ...(env.OPENCODE_API_KEY
-    ? [{ model: opencode('mimo-v2.5'), maxRetries: 3 }]
-    : []),
+  // ...(env.OPENCODE_API_KEY
+  //   ? [{ model: opencode('mimo-v2.5'), maxRetries: 3 }]
+  //   : []),
 ];
 
 export const scout: ModelWithRetries[] = [
@@ -76,9 +76,9 @@ export const scout: ModelWithRetries[] = [
     model: openrouter('deepseek/deepseek-v4-flash'),
     maxRetries: 3,
   },
-  ...(env.OPENCODE_API_KEY
-    ? [{ model: opencode('deepseek-v4-flash'), maxRetries: 3 }]
-    : []),
+  // ...(env.OPENCODE_API_KEY
+  //   ? [{ model: opencode('deepseek-v4-flash'), maxRetries: 3 }]
+  //   : []),
 ];
 
 export const explorer: ModelWithRetries[] = [
@@ -89,9 +89,9 @@ export const explorer: ModelWithRetries[] = [
     model: openrouter('minimax/minimax-m3'),
     maxRetries: 3,
   },
-  ...(env.OPENCODE_API_KEY
-    ? [{ model: opencode('minimax-m3'), maxRetries: 3 }]
-    : []),
+  // ...(env.OPENCODE_API_KEY
+  //   ? [{ model: opencode('minimax-m3'), maxRetries: 3 }]
+  //   : []),
 ];
 
 export const executor: ModelWithRetries[] = [
@@ -101,9 +101,9 @@ export const executor: ModelWithRetries[] = [
   ...(env.INFERENCE_API_KEY && env.INFERENCE_BASE_URL
     ? [{ model: inference('moonshotai/kimi-k2.7-code'), maxRetries: 3 }]
     : []),
-  ...(env.OPENCODE_API_KEY
-    ? [{ model: opencode('kimi-k2.7-code'), maxRetries: 3 }]
-    : []),
+  // ...(env.OPENCODE_API_KEY
+  //   ? [{ model: opencode('kimi-k2.7-code'), maxRetries: 3 }]
+  //   : []),
   {
     model: openrouter('moonshotai/kimi-k2.7-code'),
     maxRetries: 3,

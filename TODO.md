@@ -62,12 +62,32 @@ instead of a manual diff every time.
   this file's older entries before starting, do not just re-flip it again.
 - [ ] Tool cards stop rendering properly in Slack past roughly 50-60 steps in a
   turn (reports vary: ~50 for execute/other agents, ~60 reported separately for
-  subagents). May be one root cause or two; investigate before assuming.
-  Reconfirmed live: agent-execute's task card stops continuing to update after
-  some tool calls partway through a run. Not yet root-caused; next step is
-  querying `mastra api trace` against the running Studio instance
-  (localhost:4111) for the specific run to see where the chunk stream actually
-  stops versus where Slack stops rendering it, not guessed from logs alone.
+  subagents). Likely root cause now found via a live log dump (`mastra dev`
+  logs, not `mastra api trace`, that investigation step is superseded): Slack's
+  native streaming (`chat.startStream`/`appendStream`/`stopStream`, used by
+  `@chat-adapter/slack`) throws `message_not_in_streaming_state` once the
+  stream goes idle too long, most likely a Slack-side idle timeout (undocumented
+  exact duration). Reproduced live after a 323-second Execute delegation that
+  produced zero output the whole time (see the OpenRouter entry below for why).
+  `@chat-adapter/slack`'s `stream()` method
+  (`node_modules/@chat-adapter/slack/dist/index.js` around line 3560,
+  `flushMarkdownDelta`) has no try/catch around the plain-text
+  `streamer.append()` call, unlike the structured-chunk path a few lines below
+  it which already degrades gracefully on failure. The uncaught throw
+  propagates up to Mastra's channel layer, which logs "streaming post failed,
+  falling back to buffered text" and still delivers the message, just without
+  live updates for that turn, likely explaining the "tool cards stop
+  rendering" reports: not lost, just silently downgraded to buffered.
+  Fix candidates, not yet built: (1) patch `@chat-adapter/slack` (this repo
+  already has `patchedDependencies` infra, see `patches/`) to wrap that append
+  call in the same try/catch pattern as the structured-chunk path, so a stale
+  stream degrades gracefully instead of throwing, small and surgical; (2) add a
+  keepalive/heartbeat append during long silent gaps so the stream never goes
+  idle long enough to expire, harder, needs restructuring the `for await`
+  consumption loop with a race against a timer, worth it only if losing live
+  updates on long delegations actually matters given (1) already avoids message
+  loss. Recommendation: do (1) first, it's small and fixes the hard-fail
+  symptom; only reach for (2) if the UX gap still bothers people afterward.
 - [ ] `get_slack_file` throws a false "Downloaded X but expected Y" error for
   canvases specifically, reproduced live (`Downloaded 11 KB but expected 9 KB`
   on a real canvas file id). Root cause confirmed: canvases are live, editable
@@ -80,6 +100,51 @@ instead of a manual diff every time.
   by request. `read_canvas` no longer needs this path (see Recently completed,
   it downloads independently now), but this bug is still live for anyone using
   `get_slack_file` directly on a canvas id.
+- [ ] OpenRouter (`INFERENCE_API_KEY`'s account) is out of credits, reproduced
+  live: `z-ai/glm-5.2` and `moonshotai/kimi-k2.7-code` both failed mid-turn
+  with a 402 "This request requires more credits, or fewer max_tokens."
+  Needs a top-up at openrouter.ai/settings/credits, not a code fix. Separately,
+  the same live run also hit `z-ai/glm-5.2` erroring with 404 "No endpoints
+  found that support image input" when the executor tried to hand it a
+  screenshot, i.e. the executor's model fallback chain has a non-vision model
+  ahead of a vision-capable one for an image-input call. Worth checking
+  `providers.ts`'s executor fallback order and making sure a vision-capable
+  model is tried first (or the non-vision one is skipped) whenever the input
+  includes an image, this retry churn is also implicated in the streaming
+  timeout bug above, since it burned real silent time with zero output.
+- [ ] Rebuild `read_canvas` to return real Canvas-flavored markdown plus a
+  `section_id_mapping`, matching what other Slack canvas tools (confirmed via
+  Anthropic's own Slack MCP connector, `slack_read_canvas`) return, instead of
+  today's raw HTML dump. Mechanism fully reverse-engineered and confirmed live
+  this session, no guessing left: the HTML export (same `url_private_download`
+  fetch `read_canvas` already does) has each content block's real Slack
+  section id baked in as an `id="temp:C:..."` HTML attribute; those ids were
+  proven byte-for-byte identical, same order, to what the public
+  `canvases.sections.lookup` endpoint returns for the same canvas (tested
+  against a real workspace canvas, 22/22 header ids matched). So the whole
+  thing can be built from the one existing HTML fetch: parse the HTML,
+  convert each tagged block to markdown while keeping its `id`, and the
+  mapping falls out directly, no extra `sections.lookup` calls needed for a
+  full read (that endpoint stays useful only for `lookup_canvas_sections`'s
+  existing search-before-edit case). Open decision: needs a real HTML parser
+  to convert per-element while preserving each element's `id` (Turndown with a
+  custom per-node rule was the recommendation, naive regex-stripping would
+  lose the id-to-chunk association), which per this repo's rules means asking
+  before adding the dependency, asked, not yet confirmed.
+- [ ] Decide whether to add the missing `search:read.private`, `search:read.im`,
+  `search:read.mpim` OAuth scopes to `slack-manifest.json`, found while
+  researching Slack's Real-time Search API's new granular scopes replacing the
+  old single `search:read`. Asked once, not answered, does not block current
+  `search_slack` functionality (public search already works via
+  `search:read.public`/`.users`/`.files`, already in the manifest).
+- [ ] The canvas at `F0B76MADV39` ("Gorkie TODO", shared to `#gorkie-testing`)
+  only grants the bot read access (confirmed via `files.info`'s `access` field
+  and `dm_mpdm_users_with_file_access`), so `edit_canvas` fails with
+  `restricted_action` there specifically, not a bug, just a sharing-settings
+  gap. Its owner needs to grant the bot write access from the canvas's "Manage
+  access" menu in Slack (or via `canvases.access.set`) if edits there are
+  wanted. `edit_canvas` now surfaces a clear message for this case instead of
+  a raw API error (see Recently completed).
 - [ ] Test whether killing the process mid-`wait` (restart `mastra dev` while
   a `wait` call is pending) still resumes the thread when it should fire.
   Suspect it won't: `wait.ts` schedules the resume with a plain in-process
@@ -341,6 +406,15 @@ for now per decision, not lost.
 
 ## Recently completed
 
+- `edit_canvas` now catches `restricted_action` and throws a clear message
+  explaining the canvas's own sharing settings only grant read access, not
+  write, and who needs to grant write access, instead of surfacing a raw
+  `Error: An API error occurred: restricted_action` with no context.
+- Fixed `read_conversation_history` (all 3 source branches) and `list_threads`
+  rejecting a live, reproduced tool call where the model passed `limit` as the
+  string `"20"` instead of a number, a known LLM tool-calling quirk. Switched
+  both from `z.number()` to `z.coerce.number()` so numeric-looking strings are
+  accepted while genuine garbage still fails validation.
 - Rewrote `read_canvas` to fetch a canvas's HTML export directly (same
   `url_private_download` mechanism as `get_slack_file`) instead of reading
   `files.info`'s `content` field, which Slack never populates for canvases.
@@ -372,6 +446,19 @@ for now per decision, not lost.
   type doesn't expose the id directly, only the URL, which embeds it) so the
   model can reference an upload afterward (e.g. `get_slack_file`, embedding a
   link in a canvas).
+- Live-verified the CloakBrowser + agent-browser hardening from earlier this
+  session against a real captcha-solving run in Slack (via `mastra api
+  trace`): `agent-browser open` completed with `exitCode: 0`, no error span,
+  and the bot correctly read and interacted with real page content (solved a
+  Cloudflare Turnstile). Moved the wrapper script out of an inline heredoc in
+  `build-template.ts` (which needed every `${...}` backslash-escaped to avoid
+  colliding with the JS template literal, the exact bug fixed earlier this
+  session) into its own file, `stealth-browser.sh`, copied into the
+  image via e2b's `Template.copy(src, dest, {mode})` instead. Same runtime
+  behavior, no more escaping footgun, and `build-template.ts` reads cleanly as
+  mostly boilerplate apt/node/gh setup now. Needs `bun run build:template` to
+  actually take effect, not run this session per the "ask before" policy on
+  external side effects.
 - Diagnosed and reproduced the reported CloakBrowser + agent-browser
   breakage locally rather than guessing: could not reproduce the actual bug
   with the exact same command sequence against a clean setup, which points at
