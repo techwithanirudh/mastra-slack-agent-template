@@ -1,4 +1,5 @@
 import type {
+  ProcessInputStepArgs,
   ProcessOutputResultArgs,
   ProcessOutputStepArgs,
 } from '@mastra/core/processors';
@@ -17,8 +18,22 @@ export const footer = {
   id: 'footer',
   name: 'Completion Footer',
   description: 'Logs turn usage and posts the completion footer.',
+  // processInputStep/processOutputStep bracket a single step's LLM call
+  // (the model request/response, not the tool execution before the next
+  // step). Accumulating just that gap gives genuine generation speed;
+  // timing from the turn's first step to processOutputResult instead would
+  // include every step's tool/sandbox/approval wall-clock time too, making
+  // heavier turns falsely look slower than a quick reply with no tool calls.
+  processInputStep(args: ProcessInputStepArgs) {
+    args.state.stepStart = Date.now();
+  },
   processOutputStep(args: ProcessOutputStepArgs) {
-    args.state.startTime ??= Date.now();
+    const { stepStart } = args.state;
+    if (typeof stepStart === 'number') {
+      args.state.llmTimeMs =
+        ((args.state.llmTimeMs as number | undefined) ?? 0) +
+        (Date.now() - stepStart);
+    }
     return args.messages;
   },
   async processOutputResult(args: ProcessOutputResultArgs) {
@@ -60,9 +75,9 @@ export const footer = {
       parts.push(`${compactTokens.format(totalTokens)} tok`);
     }
 
-    const { startTime } = args.state;
-    if (typeof startTime === 'number') {
-      const elapsedSec = (Date.now() - startTime) / 1000;
+    const { llmTimeMs } = args.state;
+    if (typeof llmTimeMs === 'number') {
+      const elapsedSec = llmTimeMs / 1000;
       if (elapsedSec > 0 && outputTokens > 0) {
         parts.push(`⚡ ${(outputTokens / elapsedSec).toFixed(1)} tok/s`);
       }

@@ -8,7 +8,6 @@ import {
 import { Memory } from '@mastra/memory';
 import { env } from '@/env';
 import { slack } from '../chat/client';
-import { formatChatError } from '../chat/format-error';
 import {
   onDirectMessage,
   onMention,
@@ -23,6 +22,7 @@ import {
 } from '../lib/logger/tools';
 import { stepCountIs, toolCall } from '../lib/tools';
 import { outputProcessors } from '../processors';
+import { footer } from '../processors/footer';
 import { relocateToolResultImages } from '../processors/tool-media';
 import { buildInstructions } from '../prompts';
 import {
@@ -71,6 +71,7 @@ const orchestrator = new Agent({
     new ProviderHistoryCompat({
       additionalRules: [relocateToolResultImages],
     }),
+    footer,
   ],
   outputProcessors,
   tools: baseTools,
@@ -78,17 +79,6 @@ const orchestrator = new Agent({
     research: researchAgent,
     explore: exploreAgent,
     execute: executeAgent,
-  },
-  // Subagent delegations (auto-generated tools named `agent-${key}`) run as
-  // background tasks so a long research/explore/execute call doesn't block
-  // the turn. See index.ts's backgroundTasks.onTaskComplete/onTaskFailed for
-  // the wake-on-completion half of this.
-  backgroundTasks: {
-    tools: {
-      'agent-research': true,
-      'agent-explore': true,
-      'agent-execute': true,
-    },
   },
   memory: new Memory({
     options: {
@@ -122,7 +112,8 @@ const orchestrator = new Agent({
         adapter: slack,
         streaming: true,
         toolDisplay,
-        formatError: formatChatError,
+        formatError: (error) =>
+          `*Oops, something went wrong.*\n\n> ${error.message}`,
       },
     },
     threadContext: { maxMessages: 10 },

@@ -27,6 +27,7 @@ export const logDelegationComplete: OnDelegationCompleteHandler = (context) => {
       durationMs: context.duration,
       inputTokens: context.result.usage?.inputTokens,
       outputTokens: context.result.usage?.outputTokens,
+      response: clip(context.result.text),
     });
     return;
   }

@@ -1,13 +1,14 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { slack } from '../../chat/client';
+import { canvasIdSchema } from './utils';
 
 export const readCanvasTool = createTool({
   id: 'read_canvas',
   description:
     "Read a Slack canvas's markdown content by its canvas id (e.g. F0123ABCD). Get the id from get_channel_info or create_canvas.",
   inputSchema: z.object({
-    canvasId: z.string().min(1).describe('The canvas id.'),
+    canvasId: canvasIdSchema,
   }),
   execute: async ({ canvasId }) => {
     const info = await slack.webClient.files.info({ file: canvasId });

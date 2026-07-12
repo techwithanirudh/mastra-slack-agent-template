@@ -20,11 +20,19 @@ suspends that call with a `tool-call-approval` chunk; the run resumes via
 In a channels-integrated agent (what `orchestrator.ts` is), this is not
 something we wire up ourselves: **Mastra always renders a dedicated
 Approve/Deny card for these events, regardless of the adapter's `toolDisplay`
-mode** — including our custom function in `chat/tool-display/`, which only
-customizes `running`/`result`/`error` rendering. Per Mastra's own docs:
-"Approve/deny prompts always render as a separate card regardless of mode,
-because inline task entries can't carry interactive buttons." So adding the
-flag to a tool is sufficient; no changes to `chat/tool-display/` are needed.
+mode.** Confirmed by reading the compiled channels source
+(`@mastra/core/dist/chunk-*.js`, `runStreamingDriver`): its `tool-call` /
+`tool-result` / `tool-error` branches each check `if (toolDisplayFn) { ... }`
+before falling back to the built-in renderer, but the `tool-call-approval`
+branch has no such check at all — it unconditionally calls the built-in
+`formatToolApproval()` card. This only holds for `streaming: true` (our Slack
+config); the static driver's `renderToolEvent` does consult `toolDisplayFn`
+for the `approval` kind, so a non-streaming adapter could style it.
+Because of this, `chat/tool-display/index.ts`'s `toolDisplay` function has no
+`event.kind === 'approval'` case — it would never run, so earlier attempts to
+add one were dead code and were removed. Adding `requireApproval: true` to a
+tool is sufficient on its own; there is nothing to change in
+`chat/tool-display/` to affect how the approval card itself renders.
 
 Suspended approvals persist through `PostgresStore` (already configured in
 `index.ts`), so they survive a restart and can be rediscovered via
@@ -37,23 +45,26 @@ Suspended approvals persist through `PostgresStore` (already configured in
   back once sent.
 - `delete_scheduled_task` (`tools/scheduled-tasks/delete.ts`) — permanently
   cancels a recurring task.
-- `update_canvas` (`tools/canvas/update.ts`) — `replace` mode overwrites the
-  entire canvas; can destroy existing content.
+- `edit_canvas` (`tools/canvas/edit.ts`) — `replace`/`delete` operations can
+  destroy existing canvas content; the whole tool is gated since a single
+  call can batch multiple operation types.
+- `delete_canvas` (`tools/canvas/delete.ts`) — permanently deletes a canvas.
 
 ## Intentionally not gated
 
 - `react` — trivially reversible (remove the reaction), low stakes.
 - `wait` — no external side effect, just pauses the turn.
-- `create_scheduled_task` / `create_canvas` — creates new content rather than
-  overwriting or deleting; the user can already remove either afterward via
-  `delete_scheduled_task` (approval-gated) or by editing the canvas.
-- `agent-research` / `agent-explore` / `agent-execute` (background subagent
-  delegation) — approval suspends the run until a human responds, which
-  defeats the point of running these in the background (see
-  `TODO.md`'s "Background subagents" entry). Approval does propagate through
-  delegation chains per Mastra's docs, but that's untested against our
-  `sendSignal`-based wake path and should be treated as a real risk if this
-  is revisited, not assumed to compose cleanly.
+- `create_scheduled_task` / `create_canvas` / `create_channel_canvas` —
+  creates new content rather than overwriting or deleting; the user can
+  already remove it afterward via `delete_scheduled_task`/`delete_canvas`
+  (both approval-gated).
+- `lookup_canvas_sections` — read-only, no content destroyed.
+- `agent-research` / `agent-explore` / `agent-execute` (subagent delegation)
+  — not background tasks (see `TODO.md`'s "Background subagents" entry,
+  reverted), just regular synchronous delegation. Approval would still
+  propagate up through the delegation chain per Mastra's docs, but there's no
+  concrete need for it today; revisit if a subagent gets a genuinely
+  destructive tool of its own.
 
 Revisit this list as new tools land; the bar is "destructive/irreversible,
 cost-heavy, or posts visibly as the bot," not "anything that mutates state."
