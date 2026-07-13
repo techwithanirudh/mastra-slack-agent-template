@@ -2,8 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { computeNextFireAt, validateCron } from '@mastra/core/workflows';
 import { z } from 'zod';
 import { agent as agentConfig, scheduledTasks } from '../../config';
-import { channelContext } from '../../lib/context';
-import { resolveMemoryThread } from '../../lib/memory';
+import { resolveThreadContext } from '../../lib/memory';
 import { schedules } from './queries';
 import { formatTask, scheduledTaskKind } from './utils';
 
@@ -56,25 +55,16 @@ export const createScheduledTaskTool = createTool({
   }),
   execute: async (input, context) => {
     const service = schedules(context);
-    const ctx = channelContext(context?.requestContext);
-    const resourceId = context.agent?.resourceId;
-    const externalThreadId = ctx.threadId;
-    if (!(externalThreadId && resourceId)) {
-      throw new Error('No current Slack thread/resource to schedule into.');
-    }
-
-    const resolvedAgent = context.mastra?.getAgentById(agentConfig.id);
-    if (!resolvedAgent) {
-      throw new Error(
-        'Could not resolve this conversation to a memory thread yet. Send another message and try again.'
-      );
-    }
-    const memoryThread = await resolveMemoryThread(
-      resolvedAgent,
-      externalThreadId
-    );
-    const threadId = memoryThread.id;
-    const memoryResourceId = memoryThread.resourceId ?? resourceId;
+    const {
+      threadId,
+      resourceId: memoryResourceId,
+      ctx,
+    } = await resolveThreadContext({
+      context,
+      agentId: agentConfig.id,
+      missingContextMessage:
+        'No current Slack thread/resource to schedule into.',
+    });
 
     assertMinimumInterval(input.cron, input.timezone);
 
@@ -101,7 +91,7 @@ export const createScheduledTaskTool = createTool({
         createdIn: {
           channelId: ctx.channelId,
           isDM: ctx.isDM,
-          threadId: externalThreadId,
+          threadId: ctx.threadId,
         },
       },
     });

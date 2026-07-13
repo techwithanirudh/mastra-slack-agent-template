@@ -65,7 +65,8 @@ export const workspace: Workspace = new Workspace({
     [WORKSPACE_TOOLS.FILESYSTEM.MKDIR]: { enabled: false },
     // The network-bound built-in grep hangs on large trees; use the ripgrep tool instead.
     [WORKSPACE_TOOLS.FILESYSTEM.GREP]: { enabled: false },
-    [WORKSPACE_TOOLS.FILESYSTEM.AST_EDIT]: { name: 'ast_edit' },
+    // edit_file covers this; ast_edit's description is the priciest built-in tool schema.
+    [WORKSPACE_TOOLS.FILESYSTEM.AST_EDIT]: { enabled: false },
     [WORKSPACE_TOOLS.SANDBOX.EXECUTE_COMMAND]: { name: 'execute_command' },
     [WORKSPACE_TOOLS.SANDBOX.GET_PROCESS_OUTPUT]: {
       name: 'get_process_output',
