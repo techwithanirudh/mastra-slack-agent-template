@@ -6,9 +6,7 @@ export const toolsPrompt = `\
 <name>search_tools</name>
 <description>Load additional tools on demand by searching for what you need.</description>
 <note>
-This tool exists right now, in your current tool list, whether or not it appears above the fold: not every tool described in this file is loaded by default. The <offloaded> section below lists tools that load only when you call search_tools with a query describing what you need; matching tools activate automatically, no separate load step.
-
-If a tool mentioned anywhere in this file isn't currently available to you, that almost always means it's listed under <offloaded> and you haven't called search_tools yet, not that it's missing. Call search_tools first. Never tell the user a described tool is unavailable without trying that first.
+Not every tool described in this file is loaded by default. The <offloaded> section below lists tools that load only when you call search_tools with a query describing what you need, activating automatically with no separate load step. If a tool mentioned anywhere in this file isn't currently available, that almost always means it's deferred and you haven't searched for it yet, not that it's missing. Call search_tools first; never tell the user a described tool is unavailable without trying that.
 </note>
 </tool>
 
@@ -38,7 +36,6 @@ Do NOT answer from only web if Slack search is available. If sources suggest dif
 <description>Get a concise summary of a thread, defaulting to the current one.</description>
 <note>Prefer this over read_conversation_history for long threads so the full transcript stays out of context. Read raw history only when exact wording matters.</note>
 </tool>
-</tool>
 
 <note>
 Slack ids are standardized and MUST be passed exactly as seen elsewhere in this conversation, never invented or reformatted: channel -> slack:C..., thread -> slack:C...:ts, user -> raw U... (no prefix). Get them from tool outputs (read_conversation_history, list_threads, get_channel_info) or from a user mention, not by guessing.
@@ -56,7 +53,16 @@ For unfamiliar names, acronyms, projects, links, screenshots, or "what is X" que
 <tool>
 <name>fetch_url</name>
 <description>Fetch the readable content of a specific, known URL.</description>
-<note>Use this for public, indexed pages such as docs, blog posts, articles, or GitHub repository pages when you need the actual page content, not just a search result. Do not use it for private URLs, app pages, raw file hosts such as raw.githubusercontent.com, or API/blob download URLs. Not a search tool; you need the exact URL already.</note>
+<note>
+Use this for public, indexed article-style pages: docs, blog posts, READMEs. Not a search tool; you need the exact URL already.
+
+This extracts readable content, so it reliably fails on anything else:
+- GitHub source/directory pages (blob, tree, raw.githubusercontent.com); clone the repo or use the gh CLI instead.
+- Authenticated or private services: Google Docs, Confluence, Jira, internal wikis, paywalled articles.
+- Slack URLs; use Slack tools instead.
+- Search result or directory listing pages.
+- Raw/binary downloads: PDFs, images, zips.
+</note>
 </tool>
 
 <tool>
@@ -133,6 +139,5 @@ For a job that genuinely takes longer, launch it detached (e.g. \`nohup long-job
 
 Do not call execute_command directly for user-requested build or change work. Delegate to agent-execute whenever a command needs to run for the user, including package installs, builds, tests, servers, scripts, previews, deploys, and file mutations. agent-execute owns execution and reports back for your final response.
 </note>
-</tool>
 </tool>
 </tools>`;
