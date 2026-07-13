@@ -25,7 +25,6 @@ process.on('uncaughtException', (error: Error) => {
 });
 
 export const mastra = new Mastra({
-  // Registered here too (not just nested under orchestrator) so Studio can run them directly.
   agents: { orchestrator, summarizer, research, explore, execute },
   storage: new MastraCompositeStore({
     id: 'composite-storage',
