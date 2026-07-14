@@ -4,10 +4,10 @@ import { z } from 'zod';
 import { env } from '@/env';
 import { slack } from '../../chat/client';
 import { sh } from '../../lib/shell';
-import { resolveE2BSandbox } from '../../workspace';
+import { getSandbox } from '../../workspace';
 import { p } from '../../workspace/path';
 
-function bytes(value: number): string {
+function formatBytes(value: number): string {
   if (value < 1024 * 1024) {
     return `${Math.ceil(value / 1024)} KB`;
   }
@@ -37,7 +37,7 @@ export const getSlackFileTool = createTool({
     if (!context?.requestContext) {
       throw new Error('No workspace context.');
     }
-    const sandbox = await resolveE2BSandbox(context.requestContext);
+    const sandbox = await getSandbox(context.requestContext);
     if (!sandbox) {
       throw new Error('No sandbox available.');
     }
@@ -50,14 +50,14 @@ export const getSlackFileTool = createTool({
       );
     }
 
-    const info = (await slack.webClient.files.info({ file: fileId })).file;
-    const url = info?.url_private_download ?? info?.url_private;
+    const fileInfo = (await slack.webClient.files.info({ file: fileId })).file;
+    const url = fileInfo?.url_private_download ?? fileInfo?.url_private;
     if (!url) {
       throw new Error(
         `Could not resolve a download URL for Slack file ${fileId}. It may have been deleted, or the bot may not have access to it.`
       );
     }
-    const defaultName = info?.name ?? fileId;
+    const defaultName = fileInfo?.name ?? fileId;
     const sanitized = (filename ?? defaultName).replace(/[^\w.-]+/g, '_');
     const name =
       sanitized === '' || sanitized === '.' || sanitized === '..'
@@ -68,15 +68,15 @@ export const getSlackFileTool = createTool({
     const partPath = `${path}.part`;
     const nextPath = `${path}.next`;
     const mergePath = `${path}.merge`;
-    const done = (size: number) => ({
+    const formatResult = (size: number) => ({
       success: true,
       path,
       filename: name,
-      mimeType: info?.mimetype,
+      mimeType: fileInfo?.mimetype,
       size,
-      message: `Downloaded ${name} (${bytes(size)}) to ${path} in the sandbox.`,
+      message: `Downloaded ${name} (${formatBytes(size)}) to ${path} in the sandbox.`,
     });
-    const writeBody = async (
+    const writeResponseBody = async (
       body: ReadableStream<Uint8Array>,
       targetPath: string
     ) => {
@@ -99,7 +99,7 @@ export const getSlackFileTool = createTool({
       throwIfAborted(context.abortSignal);
       return downloaded;
     };
-    const commitPart = async () => {
+    const commitDownload = async () => {
       await sandbox.retryOnDead(async () => {
         await sandbox.e2b.files.remove(path).catch(() => undefined);
         await sandbox.e2b.files.rename(partPath, path);
@@ -107,7 +107,7 @@ export const getSlackFileTool = createTool({
         await sandbox.e2b.files.remove(mergePath).catch(() => undefined);
       });
     };
-    const mergePart = async () => {
+    const mergeDownload = async () => {
       const result = await sandbox.retryOnDead(() =>
         sandbox.e2b.commands.run(
           `cat ${sh(partPath)} ${sh(nextPath)} > ${sh(mergePath)} && mv ${sh(mergePath)} ${sh(partPath)} && rm -f ${sh(nextPath)}`
@@ -117,12 +117,12 @@ export const getSlackFileTool = createTool({
         throw new Error(`Failed to merge resumed download: ${result.stderr}`);
       }
     };
-    const fetchFile = (start?: number) => {
+    const fetchResponse = (resumeOffset?: number) => {
       const fetchWithRange = Object.assign(
         (input: URL | RequestInfo, init?: RequestInit) => {
           const requestHeaders = new Headers(init?.headers);
-          if (start !== undefined) {
-            requestHeaders.set('range', `bytes=${start}-`);
+          if (resumeOffset !== undefined) {
+            requestHeaders.set('range', `bytes=${resumeOffset}-`);
           }
           return fetch(input, {
             ...init,
@@ -140,7 +140,7 @@ export const getSlackFileTool = createTool({
       });
     };
     const expectedSize =
-      info?.size ??
+      fileInfo?.size ??
       (await fetch(url, {
         headers: { authorization: `Bearer ${env.SLACK_BOT_TOKEN}` },
         method: 'HEAD',
@@ -154,14 +154,14 @@ export const getSlackFileTool = createTool({
       .retryOnDead(() => sandbox.e2b.files.getInfo(path))
       .catch(() => undefined);
     if (expectedSize !== undefined && existingFinal?.size === expectedSize) {
-      return done(expectedSize);
+      return formatResult(expectedSize);
     }
 
     if (expectedSize === 0) {
       await sandbox.retryOnDead(() =>
         sandbox.e2b.commands.run(`rm -f ${sh(path)} && : > ${sh(path)}`)
       );
-      return done(expectedSize);
+      return formatResult(expectedSize);
     }
 
     const existingPart = await sandbox
@@ -169,8 +169,8 @@ export const getSlackFileTool = createTool({
       .catch(() => undefined);
     const resumeAt = existingPart?.size ?? 0;
     if (expectedSize !== undefined && resumeAt === expectedSize) {
-      await commitPart();
-      return done(expectedSize);
+      await commitDownload();
+      return formatResult(expectedSize);
     }
 
     if (expectedSize !== undefined && resumeAt > expectedSize) {
@@ -184,23 +184,25 @@ export const getSlackFileTool = createTool({
       await sandbox.e2b.files.remove(mergePath).catch(() => undefined);
     });
 
-    const start =
+    const resumeOffset =
       expectedSize !== undefined && resumeAt < expectedSize ? resumeAt : 0;
-    const res = await fetchFile(start > 0 ? start : undefined);
-    if (!(res.ok && (start === 0 || res.status === 206))) {
-      throw new Error(`Failed to download Slack file: ${res.status}`);
+    const response = await fetchResponse(
+      resumeOffset > 0 ? resumeOffset : undefined
+    );
+    if (!(response.ok && (resumeOffset === 0 || response.status === 206))) {
+      throw new Error(`Failed to download Slack file: ${response.status}`);
     }
-    if (!res.body) {
+    if (!response.body) {
       throw new Error('Slack file response did not include a body.');
     }
 
-    const downloadedSize = await writeBody(
-      res.body,
-      start > 0 ? nextPath : partPath
+    const downloadedSize = await writeResponseBody(
+      response.body,
+      resumeOffset > 0 ? nextPath : partPath
     );
 
-    if (start > 0) {
-      await mergePart();
+    if (resumeOffset > 0) {
+      await mergeDownload();
     }
 
     const finalPart = await sandbox.retryOnDead(() =>
@@ -208,11 +210,11 @@ export const getSlackFileTool = createTool({
     );
     if (expectedSize !== undefined && finalPart.size !== expectedSize) {
       throw new Error(
-        `Downloaded ${bytes(finalPart.size)} but expected ${bytes(expectedSize)}.`
+        `Downloaded ${formatBytes(finalPart.size)} but expected ${formatBytes(expectedSize)}.`
       );
     }
-    await commitPart();
+    await commitDownload();
 
-    return done(expectedSize ?? downloadedSize);
+    return formatResult(expectedSize ?? downloadedSize);
   },
 });

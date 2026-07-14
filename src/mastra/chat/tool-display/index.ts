@@ -25,7 +25,7 @@ export const toolDisplay: ToolDisplayFn = (event) => {
 
   if (event.kind === 'running') {
     return taskUpdate({
-      details: subagentPrompt(event) ?? formatInput(event),
+      details: subagentPrompt(event) ?? formatInput({ event }),
       id,
       status: 'in_progress',
       title,
@@ -45,7 +45,7 @@ export const toolDisplay: ToolDisplayFn = (event) => {
   if (event.kind === 'error') {
     return taskUpdate({
       id,
-      output: `*Error*:\n${format(event.errorText, config.maxOutput)}`,
+      output: `*Error*:\n${format({ max: config.maxOutput, value: event.errorText })}`,
       status: 'error',
       title,
     });

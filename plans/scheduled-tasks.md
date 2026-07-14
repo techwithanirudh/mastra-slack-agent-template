@@ -35,7 +35,7 @@ and `docs-long-running-agents-schedules.md`):
   resourceId, tagName: 'scheduled-task', ifActive: { behavior: 'persist' },
   ifIdle: { behavior: 'wake', streamOptions: { requestContext } }, metadata:
   { kind, task, createdBy, createdIn } })`. `threadId`/`resourceId` come from
-  `resolveMemoryThread()` (`src/mastra/lib/memory.ts:3-19`), which looks up the
+  `memoryThread()` (`src/mastra/lib/memory.ts:3-19`), which looks up the
   Mastra memory thread by `metadata.channel_externalThreadId` so the schedule
   fires a signal into the same conversation the tool was called from.
 - `queries.ts` scopes every read/write to the calling user
@@ -69,14 +69,14 @@ dropping tool cards. The fix lives in `src/mastra/chat/adapter.ts:10-85`
 stash `{ userId, teamId }` per thread (in-memory `Map` plus `chat.getState()`
 for restart durability), and overrides `stream()` to inject the stashed
 recipient whenever the caller didn't supply one and the channel isn't a DM.
-TODO.md explicitly flags this "Verify live before closing" — it has not been
+TODO.md explicitly flags this "Verify live before closing", it has not been
 confirmed against a real fired schedule yet.
 
 **Compare to gorkie's actual mechanism**, which differs architecturally, not
 just cosmetically. Gorkie (`/workspaces/gorkie/src/mastra/chat/preferences.ts:34-46`,
 `handlers.ts:44-62`) captures the same `{ teamId, userId }` pair, but from
 inside `onMention`/`onSubscribedMessage`/`onDirectMessage` in
-`chat/handlers.ts` — the Chat SDK's own extension point — not by overriding a
+`chat/handlers.ts`, the Chat SDK's own extension point, not by overriding a
 `protected` adapter method. It Zod-parses `message.raw` for `team`/`team_id`/
 `user.team_id` (`handlers.ts:16-32`, a `looseObject` schema) instead of reading
 raw event fields, and it runs for every handler including DMs (the template's
@@ -224,8 +224,8 @@ reuses the channels state adapter already backing everything else in
 
 **Recipient-stash correctness (blocking, not optional).** Before shipping any
 new one-time tool that also posts *into a channel thread while idle*
-(scheduled messages posted by Slack itself don't need this — Slack posts them
-directly, no agent stream involved — but the existing recurring-task delivery
+(scheduled messages posted by Slack itself don't need this, Slack posts them
+directly, no agent stream involved, but the existing recurring-task delivery
 still does), port gorkie's `handlers`-based capture
 (`chat/preferences.ts:7,34-46` + `chat/handlers.ts:44-62`) in place of the
 current `handleMessageEvent` override in `chat/adapter.ts:22-52`. Concretely: this template already has the matching hook, `src/mastra/chat/handlers.ts`,
@@ -407,7 +407,7 @@ live before closing" only after that.
   the current thread only (safer default, matches `create_scheduled_task`'s
   current scoping)? TODO.md's deferred Slack tool-authorization work
   (`TODO.md:73-86`) explicitly separates "agent-authored posts stay open"
-  from "send-as-user is secured" — a scheduled message to an arbitrary
+  from "send-as-user is secured", a scheduled message to an arbitrary
   channel is agent-authored, so the existing `post_message` precedent argues
   for allowing any target, but flag this for an explicit decision rather than
   assuming it.

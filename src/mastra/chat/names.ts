@@ -4,11 +4,11 @@ import type { UserProfile } from '../types';
 import { slack } from './client';
 import { chat } from './instance';
 
-const profileFields = z.record(
+const profileFieldsSchema = z.record(
   z.string(),
   z.looseObject({ label: z.string().optional(), value: z.string().optional() })
 );
-const userInfo = z.looseObject({
+const userInfoSchema = z.looseObject({
   user: z
     .looseObject({
       tz: z.string().optional(),
@@ -16,17 +16,15 @@ const userInfo = z.looseObject({
     })
     .optional(),
 });
-const DAY_MS = 86_400_000;
-
 export async function resolveUserProfile(
   id: string
 ): Promise<UserProfile | undefined> {
   const userId = rawId(id);
-  const key = `slack:user-profile:${userId}`;
+  const cacheKey = `slack:user-profile:${userId}`;
   const bot = chat();
   const [user, cached] = await Promise.all([
     bot.getUser(userId),
-    bot.getState().get<UserProfile>(key),
+    bot.getState().get<UserProfile>(cacheKey),
   ]);
 
   let profile = cached ?? undefined;
@@ -39,11 +37,11 @@ export async function resolveUserProfile(
         }),
         slack.webClient.users.info({ user: userId }),
       ]);
-      const info = userInfo.parse(rawUser);
+      const info = userInfoSchema.parse(rawUser);
       if (!(raw || user)) {
         return;
       }
-      const fields = profileFields.parse(raw?.fields ?? {});
+      const fields = profileFieldsSchema.parse(raw?.fields ?? {});
       profile = {
         displayName: raw?.display_name || undefined,
         fields: Object.values(fields).flatMap((field) =>
@@ -60,7 +58,7 @@ export async function resolveUserProfile(
       };
       await bot
         .getState()
-        .set(key, profile, DAY_MS)
+        .set(cacheKey, profile, 86_400_000)
         .catch(() => undefined);
     } catch {
       if (!user) {

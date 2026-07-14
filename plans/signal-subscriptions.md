@@ -419,7 +419,7 @@ full generation, and only genuinely urgent events spend a real model turn.
 5. **`src/mastra/tools/signals/subscribe-email.ts` /
    `unsubscribe-email.ts`** (new, small, dict-param `createTool`s following
    the scheduled-task tool shape in `tools/scheduled-tasks/create.ts`):
-   resolve the current thread via `channelContext`/`resolveMemoryThread`
+   resolve the current thread via `channelContext`/`memoryThread`
    (same helpers `create.ts` uses), call
    `emailSignals.subscribe({ threadId, resourceId }, inboxOrAddress)` /
    `unsubscribe(...)`. GitHub does not need an equivalent tool: `github-signals`

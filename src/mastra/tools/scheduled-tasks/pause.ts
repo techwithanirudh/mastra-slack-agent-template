@@ -18,7 +18,7 @@ export const pauseScheduledTaskTool = createTool({
   execute: async ({ id }, context) => {
     const service = schedules(context);
     const scope = taskScope(context);
-    await findOwnedTask(service, { id, resourceId: scope.resourceId });
+    await findOwnedTask({ service, id, resourceId: scope.resourceId });
     const result = await service.pause(id);
     if (!isAgentSchedule(result)) {
       throw new Error(`Scheduled task ${id} is not an agent schedule.`);
@@ -27,7 +27,7 @@ export const pauseScheduledTaskTool = createTool({
 
     return {
       success: true,
-      task: formatTask(updated, scope.resourceId),
+      task: formatTask({ task: updated, currentResourceId: scope.resourceId }),
       message: `Paused scheduled task ${id}.`,
     };
   },

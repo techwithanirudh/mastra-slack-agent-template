@@ -9,10 +9,9 @@ verification item about shipping a live auto-spawned external MCP by
 default. Second, let Slack end users register their own MCP servers at
 runtime (name + URL + auth header), scoped strictly to the registering
 user, surfaced through a modal reachable from the App Home tab's existing
-"More settings coming soon" placeholder. The plan is explicit that runtime
-user MCPs without bounded schema growth is not viable long-term and
-recommends `plans/deferred-tools.md` as the real fix, with an interim
-per-user cap as the guardrail until that lands.
+"More settings coming soon" placeholder. Runtime user MCPs must use the
+existing `ToolSearchProcessor` path so their schemas stay out of the default
+tool list.
 
 ## Current state
 
@@ -75,7 +74,7 @@ a lightweight Slack-native settings interaction.
 once at module load (`...mcpTools` spread in at the end) and passed as
 `tools: baseTools` at `orchestrator.ts:55`. The `Agent` constructor's other
 dynamic fields already use `({ requestContext }) => ...`
-(`instructions: ({ requestContext }) => buildInstructions(requestContext)`,
+(`instructions: ({ requestContext }) => instructions(requestContext)`,
 `orchestrator.ts:34`) but `tools` does not; it is the one static field in
 an otherwise per-request-aware config. `src/mastra/lib/context.ts:4-11`
 already extracts the Slack actor from a request:
@@ -97,9 +96,9 @@ channel-originated request, which is the per-user key this plan needs and
 which prompts already read via `channelContext(requestContext)`
 (`src/mastra/prompts/context.ts:4-5`).
 
-**App Home settings placeholder.** `src/mastra/chat/events.ts:33-73`
-publishes a static `HOME_VIEW` on `app_home_opened`
-(`registerEvents()` at `:84-96` calls `bot.onAppHomeOpened((event) =>
+**App Home settings placeholder.** `src/mastra/chat/content.ts` defines the
+static `content.home` published on `app_home_opened`
+(`registerEvents()` calls `bot.onAppHomeOpened((event) =>
 publishHome(event.userId))`), ending with a context block: `'More settings
 coming soon.'` (`:70-73`). `TODO.md`'s App Home entry explicitly earmarks
 this: "Later: replace with real settings controls (e.g. tool-visibility
@@ -303,10 +302,10 @@ Key decisions inside this design, each with a reason:
 
 ### App Home + modal UX
 
-Fill `chat/events.ts`'s `HOME_VIEW` placeholder (`:70-73`) with a button:
+Fill `chat/content.ts`s `content.home` placeholder (`:70-73`) with a button:
 
 ```ts
-// src/mastra/chat/events.ts (sketch addition to HOME_VIEW.blocks)
+// src/mastra/chat/content.ts (sketch addition to content.home.blocks)
 Actions([
   Button({ id: 'mcp_manage', label: 'Manage MCP servers', value: '' }),
 ]),
@@ -495,16 +494,11 @@ users can add their own, entirely outside the template author's control:
 a single real-world MCP server (e.g. a project-management or CRM
 integration) can expose 30-50 tools on its own.
 
-**Unlimited user-registered MCP servers is not viable without lazy/deferred
-tool loading.** This plan does not attempt to solve that problem itself;
-it names the dependency explicitly, per `plans/README.md`'s own index
-entry: `plans/deferred-tools.md`, "lazy/deferred tool loading + tool
-search, to keep the prompt small": is the enabling feature. The intended
-shape (tool_search-style: the model calls a small, fixed `tool_search`/
-`mcp_search` meta-tool to discover and load a given server's schemas only
-when it plans to use them, instead of every server's every tool being
-resident in every prompt) keeps the steady-state prompt bounded regardless
-of how many servers a user has registered.
+**Unlimited user-registered MCP servers still require bounded discovery.**
+The repo now uses `ToolSearchProcessor`, so this plan must register user MCP
+tools with that deferred tool path instead of placing every schema in the
+default tool list. The model discovers and activates matching schemas through
+`search_tools`, keeping the steady-state prompt bounded.
 
 `plans/slack-code-mode.md`'s `createCodeMode()` approach is a **different
 shape and does not substitute** for user MCPs specifically: code-mode
@@ -516,10 +510,9 @@ is already running, so there is no static allow-list to collapse into a
 code-mode tool without the allow-list itself becoming dynamic per user,
 which reintroduces the exact scaling problem code-mode exists to avoid.
 
-**Recommendation:** treat this plan's end-user-registration feature as
-gated on `plans/deferred-tools.md` landing first. If it must ship before
-that, ship with a hard interim guardrail stated as temporary, not a
-design choice: cap registered servers per user (e.g. 1, enforced in
+**Recommendation:** integrate end-user registration with the existing
+deferred-tool path. Keep a server/tool-count guardrail as defense in depth:
+cap registered servers per user (e.g. 1, enforced in
 `addUserMcpServer`) and/or cap total tool count merged in
 (`userMcpTools` counts `Object.keys(tools).length` after `listTools()`
 and truncates/rejects past a `config.ts` constant, e.g.
@@ -578,7 +571,7 @@ a complementary plan, not an alternative to this one.
    (`:55`) to the dynamic function shown in Design, importing
    `userMcpTools`.
 7. **`src/mastra/chat/events.ts`**: add the `Actions([Button({ id:
-   'mcp_manage', ... })])` block to `HOME_VIEW` (replacing or
+   'mcp_manage', ... })])` block to `content.home` (replacing or
    supplementing the "More settings coming soon" context line at
    `:70-73`), and register `bot.onAction('mcp_manage', ...)` +
    `bot.onModalSubmit('mcp_add_server', ...)` +
@@ -595,8 +588,7 @@ a complementary plan, not an alternative to this one.
    section to describe the new opt-in `MCP_CONTEXT7_ENABLED` gate.
 10. **`.env.example`**: add the new env vars from step 1 with comments.
 11. **`TODO.md`**: check off the "VERIFY" item (resolved: now opt-in) and
-    the Roadmap "MCP support" line; add a note that unlimited user MCPs
-    depends on `plans/deferred-tools.md`.
+    the Roadmap "MCP support" line.
 12. Run `bun run typecheck`, `bun run check`, `bun run check:spelling` per
     CLAUDE.md's Validation section. Ask the user to exercise the App Home
     flow and a real MCP registration in their own running bot instance
@@ -643,9 +635,9 @@ a complementary plan, not an alternative to this one.
   which references but doesn't define the modal builder). Read
   `node_modules/chat/dist/chat-Dm1vQU3i.d.ts` around the `Modal`/
   `TextInput` exports directly before implementing step 8.
-- **Unlimited user MCPs is explicitly not solved here.** See Token cost.
-  Either sequence this plan after `plans/deferred-tools.md`, or ship with
-  the stated interim per-user cap and revisit once deferred-tools lands.
+- **Unlimited user MCPs still need explicit limits.** See Token cost. Route
+  them through the existing deferred-tool path and keep the stated per-user
+  cap as defense in depth.
 - **`requireToolApproval: true` UX has not been tested in this template's
   Slack surface.** The human-in-the-loop approval flow it hooks into
   renders as "a separate card regardless of mode"
@@ -676,8 +668,8 @@ settings surface (first use of `Modal`/`onModalSubmit` in this template
 outside gorkie's simple `Button`/`Actions` onboarding), and an unresolved
 secrets-at-rest decision that needs maintainer sign-off before shipping.
 Priority: matches its position in `TODO.md`'s Roadmap section (not the
-Active work stream). Depends on `plans/deferred-tools.md` for the
-end-user-registration half to be viable without an interim cap; loosely
+Active work stream). The end-user-registration half must use the existing
+deferred-tool path; it is loosely
 related to `plans/custom-instructions.md` (both add a first per-user
 settings surface reachable from App Home; worth coordinating the App
 Home UI layout, e.g. a single "Settings" entry point that fans out to

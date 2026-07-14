@@ -7,16 +7,19 @@ const commands: Record<string, CommandHandler> = {
   stop,
 };
 
-export async function handleCommand(
-  thread: Thread,
-  message: Message
-): Promise<boolean> {
+export async function handleCommand({
+  message,
+  thread,
+}: {
+  message: Message;
+  thread: Thread;
+}): Promise<boolean> {
   const body = withoutLeadingMentions(rawText(message)).trim();
   const match = body.match(/^!(\w+)\b/i);
   const command = match?.[1] ? commands[match[1].toLowerCase()] : undefined;
   if (!command) {
     return false;
   }
-  await command(thread, message);
+  await command({ message, thread });
   return true;
 }

@@ -22,7 +22,7 @@ losing per-action Slack tool cards in favor of one generic "Slack Code" card.
 `src/mastra/tools/canvas/{create,read,update}.ts`, aggregated into
 `canvasTools` at `src/mastra/tools/canvas/index.ts:5-8`. There is no
 `pin_message` or `set_channel_topic` tool anywhere in this repo or in gorkie
-today (confirmed by `find` across both trees) — these are net-new.
+today (confirmed by `find` across both trees), these are net-new.
 
 All tools are merged onto the orchestrator agent at exactly one place,
 `src/mastra/tools/base.ts:12-23`:
@@ -48,18 +48,17 @@ ask for; the plan should keep using it, not add a second one.
 **Ownership scoping is currently absent.** `src/mastra/tools/slack/utils.ts`
 today only has `joinChannel` and `formatMessage`. Per
 `TODO.md:73-86` ("DEFERRED (pending code-mode refactor)"), the guards gorkie
-`dev` has under `tools/slack/utils.ts` — `assertCanPostTo`,
+`dev` has under `tools/slack/utils.ts`, `assertCanPostTo`,
 `assertReadableChannel`, `assertCanManagePostedMessage` +
-`recordPostedMessage` — were intentionally dropped from this template with a
+`recordPostedMessage`, were intentionally dropped from this template with a
 note that they'd be re-added "as part of that refactor", i.e. this one. See
 `/workspaces/gorkie/src/mastra/tools/slack/utils.ts:40-129` for the exact
 functions (quoted in full below). TODO.md's own nuance: `post_message` should
 stay broadly open for agent-authored posts; only the *send-as-user* case needs
 locking down (cross-ref `plans/send-as-user.md`), while edit/delete need
 bot-authored-message ownership checks (cross-ref
-`plans/message-ownership-scoping.md`). Both of those plans are siblings to
-this one in `plans/` per `plans/README.md`; this plan depends on their
-ownership model but does not redefine it.
+`plans/message-ownership-scoping.md`). This plan depends on that ownership
+model but does not redefine it.
 
 **Gorkie has no code-mode precedent.** `grep -rln "codeMode\|CodeMode\|code-mode"` across
 `/workspaces/gorkie/src` returns nothing, and gorkie has no canvas, pin, or
@@ -73,12 +72,12 @@ the pinned version, not the changelog or a sourcemap:
 
 - `package.json:12` pins `"@mastra/core": "1.50.0"` (patched via
   `patches/@mastra+core@1.50.0.patch`, which only touches token-overhead
-  accounting in `chunk-JGDMZZAO.js`/`chunk-EVJSSG7F.cjs` — it does not touch
+  accounting in `chunk-JGDMZZAO.js`/`chunk-EVJSSG7F.cjs`, it does not touch
   any code-mode file, confirmed by grep).
 - `node_modules/@mastra/core/dist/tools/index.d.ts:8`: `export * from './code-mode/index.js';`
 - `node_modules/@mastra/core/dist/tools/index.cjs:74-84` defines real runtime
   getters for `createCodeMode`, `createCodeModeInstructions`, and
-  `createCodeModeTool` (not just `.d.ts`/sourcemap hits — the earlier grep
+  `createCodeModeTool` (not just `.d.ts`/sourcemap hits, the earlier grep
   that only matched sourcemaps was incomplete; the runtime export is genuinely
   there).
 - `node_modules/@mastra/core/CHANGELOG.md:6144`: "Added experimental Code Mode
@@ -97,8 +96,8 @@ the pinned version, not the changelog or a sourcemap:
 `src/mastra/workspace/sandbox.ts:7-27`), and
 `src/mastra/agents/orchestrator.ts:26,43` passes that same `workspace` to the
 `Agent` constructor. This means the orchestrator already has a `WorkspaceSandbox`
-available at every request — the same one `execute_command`/filesystem tools
-use — so code-mode does not need its own sandbox instance (see Design).
+available at every request, the same one `execute_command`/filesystem tools
+use, so code-mode does not need its own sandbox instance (see Design).
 
 ## Design
 
@@ -122,14 +121,14 @@ export interface CodeModeConfig {
 `declare function external_<name>(...)` per tool
 (`node_modules/@mastra/core/dist/tools/code-mode/stub-generator.d.ts:22-35`);
 it must be added to the agent's system prompt for the model to know the
-functions exist — `createCodeMode()` does not inject it automatically.
+functions exist, `createCodeMode()` does not inject it automatically.
 
 Calling `createCodeMode()` more than once with distinct `id`s gives an agent
 several independently-scoped code tools; "It can only call the `external_*`
 functions for the tools passed to its own `createCodeMode()` call, so the
 subsets stay isolated" (`docs-agents-code-mode.md:101`, confirmed live via
 WebFetch). This is the exact mechanism the maintainer's "possibly a second
-code-mode for email" idea would use — see Risks for why this plan does not
+code-mode for email" idea would use, see Risks for why this plan does not
 build that one now.
 
 ### The crux: how secrets stay host-side (verified in source, not docs prose)
@@ -153,12 +152,12 @@ const dispatch = async (toolId, args) => {
 `createCodeModeTool()`'s own `execute` function is itself a normal Mastra
 tool `execute`, which per this repo's architecture runs on the **host**
 agent process (CLAUDE.md: "The agent brain runs on the host"). `dispatch`
-calls `tool2.execute(...)` — the *real* `post_message`/`pin_message`/etc.
-tool — directly on the host, inside this same closure, with full access to
+calls `tool2.execute(...)`, the *real* `post_message`/`pin_message`/etc.
+tool, directly on the host, inside this same closure, with full access to
 `slack.webClient` (which holds `SLACK_BOT_TOKEN` from `src/env.ts`). Only
 `transport.run({ sandbox, program, toolIds, dispatch, ... })` crosses into
 the sandbox, and `program` is the model-authored TypeScript with no
-credentials in it — it only sees typed `external_post_message(...)` stubs.
+credentials in it, it only sees typed `external_post_message(...)` stubs.
 Concretely: **the Slack token never serializes into anything that enters the
 sandbox.** This matches CLAUDE.md's "Never put secrets... into the sandbox"
 boundary by construction, not by extra work this plan has to do.
@@ -182,7 +181,7 @@ const handle = await sandbox.processes.spawn(
 `fs`/`os`/`path` here are Node's host built-ins (imported at the top of the
 same chunk), so `dir` is a directory on the **host** machine's `os.tmpdir()`.
 The runner script is written there, then `sandbox.processes.spawn(...)` is
-asked to run it with `cwd: dir` — a host path.
+asked to run it with `cwd: dir`, a host path.
 
 For `LocalSandbox`, this is fine by design: its process manager "run[s] as
 child processes on the local machine using `child_process.spawn`"
@@ -201,7 +200,7 @@ const e2bHandle = await e2b.commands.run(command, {
 
 `e2b.commands.run`'s `cwd` is a path **inside the remote sandbox VM**, not
 the host. There is no file-upload step anywhere in
-`StdioCodeModeTransport.run()` — it never calls anything like
+`StdioCodeModeTransport.run()`, it never calls anything like
 `sandbox.files.write` before spawning. So `cwd: <host tmp dir>` and the
 literal host path baked into the spawn command
 (`node --experimental-strip-types /tmp/mastra-code-mode-xxxx/runner-xxxx.mjs`)
@@ -211,7 +210,7 @@ transport, run as-is against this repo's `E2BSandbox`, is expected to fail
 tool.
 
 The only sandbox/config combination the default transport actually supports
-is `sandbox: new LocalSandbox()` — which the docs themselves flag as running
+is `sandbox: new LocalSandbox()`, which the docs themselves flag as running
 "the function as a host `node` process with host privileges, so only use it
 for trusted or local development"
 (`docs-agents-code-mode.md:28`). That is precisely what CLAUDE.md forbids:
@@ -220,7 +219,7 @@ touches our OS." **`LocalSandbox` is not an option for this repo.**
 
 **Recommendation: ship a small custom `CodeModeTransport` for E2B.** It
 reuses the exact same stdout/stdin JSON-RPC protocol (which does cross the
-E2B boundary fine — `onStdout`/`sendStdin` are exactly what
+E2B boundary fine, `onStdout`/`sendStdin` are exactly what
 `src/mastra/tools/workspace`'s `execute_command`/`get_process_output` tooling
 already relies on today via the same `E2BProcessManager`), and only replaces
 the file-placement step:
@@ -229,7 +228,7 @@ the file-placement step:
    file API, not `node:fs`. `E2BSandbox` exposes the raw SDK sandbox via
    `get e2b(): Sandbox`
    (`node_modules/@mastra/e2b/dist/sandbox/index.d.ts:155`), which has
-   `.files.write(path, content)` — already used this way elsewhere in
+   `.files.write(path, content)`, already used this way elsewhere in
    `@mastra/e2b` for writing credentials/config into a sandbox
    (`node_modules/@mastra/e2b/dist/index.cjs:120,196,423,1101`).
 2. Write into a path under the sandbox's own workdir,
@@ -237,14 +236,14 @@ the file-placement step:
    convention `E2BFilesystem`/`createSandbox` already use), e.g.
    `/home/user/.mastra-code-mode/<random>/`.
 3. Spawn with `cwd` set to that in-sandbox path instead of the host tmp dir.
-4. Keep everything else — frame parsing, RPC dispatch, timeout race,
-   cleanup — identical to `StdioCodeModeTransport`.
+4. Keep everything else, frame parsing, RPC dispatch, timeout race,
+   cleanup, identical to `StdioCodeModeTransport`.
 
 This is a genuine ~100-line file, not a one-liner, so it earns its place per
 CODING_STANDARDS.md's "deletion test." Before writing it, do a 10-minute
 smoke test first (call `createCodeMode` with a single trivial tool against a
 real resolved `E2BSandbox` from this repo's `workspace`, and observe whether
-it fails exactly as predicted) — cheap, and turns "we're confident from
+it fails exactly as predicted), cheap, and turns "we're confident from
 static reading" into "we verified it," which is worth doing before writing
 ~100 lines other engineers will trust.
 
@@ -290,7 +289,7 @@ Everything else stays a plain top-level tool: reads (`search_slack`,
 used on nearly every turn (forcing them through code-mode would add
 indirection without a least-privilege benefit, since reads aren't the risk
 surface). `post_message` deliberately stays reachable for ordinary
-agent-authored posts too — see the "un-confusing" note below on why this
+agent-authored posts too, see the "un-confusing" note below on why this
 does **not** mean duplicating the tool.
 
 **Only one registration per tool id.** Once `post_message`, `edit_message`,
@@ -363,11 +362,11 @@ export const baseTools = {
 ```
 
 A template user who wants to add another Slack mutation later touches
-exactly `slack-code/tools.ts` (add the import and the map entry) — no
+exactly `slack-code/tools.ts` (add the import and the map entry), no
 change to `base.ts`, no new wiring elsewhere. A user who wants the feature
 off entirely deletes `tools/slack-code/`, restores the 7 moved tools into
 `slackTools`/`canvasTools`, and removes the one `slack_code` line from
-`base.ts` — no other file references it (see Risks for the one instructions
+`base.ts`, no other file references it (see Risks for the one instructions
 wiring exception).
 
 ### Prompt/instructions wiring
@@ -396,7 +395,7 @@ plumbing.
   (`codeModeInputSchema`, `chunk-EVJSSG7F.cjs:4426-4430`) plus one static
   instructions block appended to the system prompt. The instructions block is
   fixed per agent (not re-derived per call), so it behaves like the rest of
-  `toolsPrompt` — a one-time prompt-token cost, not a per-tool-call one.
+  `toolsPrompt`, a one-time prompt-token cost, not a per-tool-call one.
 - **Tool cards regress to one generic card.** `chat/tool-display/index.ts:7-47`
   renders cards purely from `event.toolName`/`displayName` plus
   `formatInput`/`formatResult` (`chat/tool-display/format.ts`). A code-mode
@@ -409,7 +408,7 @@ plumbing.
   `formatResult` surfaces on success (`chat/tool-display/format.ts:78-99`
   reads `result.message`/`result.output`/etc., but the code-mode tool's own
   `outputSchema` returns `{ success, result, logs, error }`
-  (`chunk-EVJSSG7F.cjs:4431-4440`) — `formatResult` falls through to
+  (`chunk-EVJSSG7F.cjs:4431-4440`), `formatResult` falls through to
   stringifying the whole object, so double-check this renders acceptably
   during implementation and add a `logs`-first branch to `formatResult` if it
   doesn't).
@@ -429,12 +428,12 @@ plumbing.
   real tokens in-process.
 - **A second code-mode tool for email/AgentMail tools.** The maintainer was
   unsure; TODO.md itself already records "decided against it for now." Keep
-  it that way in this plan too — see Risks for why the mechanism would be
+  it that way in this plan too, see Risks for why the mechanism would be
   trivial to add later (just another `createCodeMode({ id: 'email_code', ... })`
   call) but isn't justified yet given AgentMail tools live inside the E2B
   sandbox already (per `src/mastra/workspace/sandbox.ts:20`, "AgentMail...
   credentials... are brokered by the host through sandbox network rules"),
-  not as host-side Mastra tools — there's nothing to wrap yet.
+  not as host-side Mastra tools, there's nothing to wrap yet.
 
 ## Implementation steps
 
@@ -500,7 +499,7 @@ plumbing.
 - **Slack manifest scopes** (`slack-manifest.json`, currently
   `slack-manifest.json:23-48`): add `pins:write` (for `pins.add`/`pins.remove`)
   and, for least privilege, the narrow topic scopes rather than the broad
-  `channels:manage`/`groups:write` — `channels:write.topic` (public
+  `channels:manage`/`groups:write`, `channels:write.topic` (public
   channels) and `groups:write.topic` (private channels), per Slack's own
   scope docs (verified via web search against
   `https://docs.slack.dev/reference/methods/conversations.setTopic/` and
@@ -513,7 +512,7 @@ plumbing.
 - **No new dependency.** `createCodeMode` ships inside the already-pinned
   `@mastra/core@1.50.0`; no `package.json` change, so this does not trip
   CLAUDE.md's "ask first: dependency changes" gate. Flag this explicitly
-  since it's easy to assume a beta feature needs a version bump — it
+  since it's easy to assume a beta feature needs a version bump, it
   doesn't, here.
 - **No Postgres schema change.** If ownership recording is needed (per
   `plans/message-ownership-scoping.md`), it reuses the existing
@@ -521,7 +520,7 @@ plumbing.
   `recordPostedMessage` already uses
   (`/workspaces/gorkie/src/mastra/tools/slack/utils.ts:74-101`), the same
   primitive this template already uses for the `titled` per-thread flag and
-  the scheduled-task recipient stash (`TODO.md:127-129`) — no migration.
+  the scheduled-task recipient stash (`TODO.md:127-129`), no migration.
 
 ## Risks & open questions
 
@@ -548,7 +547,7 @@ plumbing.
   card in favor of a generic "Slack Code" card. If this proves confusing in
   practice, the fallback is keeping `post_message` as a standalone
   top-level tool (frequent, low-risk, single-action) while only
-  edit/delete/canvas/pin/topic/wait go through code-mode — a smaller version
+  edit/delete/canvas/pin/topic/wait go through code-mode, a smaller version
   of this plan's scope. Flag as a decision to revisit after a week of real
   usage, not something to pre-decide now.
 - **`external_wait` calls block the RPC round-trip on the host**, i.e. a
@@ -558,7 +557,7 @@ plumbing.
   cost, just where it's invoked from.
 - **Second code-mode for email/AgentMail**: explicitly deferred (TODO.md
   already says "decided against it for now"). Revisit only once AgentMail
-  gains host-side Mastra tools to wrap — today AgentMail is sandbox-only
+  gains host-side Mastra tools to wrap, today AgentMail is sandbox-only
   credential brokering (`src/mastra/workspace/sandbox.ts:20`), so there is
   nothing to scope yet.
 - **`formatResult`'s rendering of the code-mode output shape** needs a

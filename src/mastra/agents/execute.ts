@@ -9,7 +9,7 @@ import { agent as config } from '../config';
 import { logTools } from '../lib/logger/tools';
 import { stepCountIs } from '../lib/tools';
 import { sandbox } from '../processors/sandbox';
-import { relocateToolResultImages } from '../processors/tool-media';
+import { moveToolImages } from '../processors/tool-media';
 import { executor } from '../providers';
 import { baseTools } from '../tools/base';
 import { generateImageTool } from '../tools/generate-image';
@@ -33,7 +33,7 @@ export const executeAgent = new Agent({
       trimMode: 'contiguous',
     }),
     new ProviderHistoryCompat({
-      additionalRules: [relocateToolResultImages],
+      additionalRules: [moveToolImages],
     }),
   ],
   defaultOptions: {

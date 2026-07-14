@@ -229,8 +229,7 @@ or writing a comparison by hand. See Design for how this plugs in as a
 defense-in-depth layer, not a replacement for the state-tracked check.
 
 **No `plans/send-as-user.md` exists yet** (confirmed: absent from `plans/`,
-though listed in `plans/README.md:19` and referenced by
-`plans/slack-code-mode.md:56-62` as a planned sibling). It matters here
+though referenced by `plans/slack-code-mode.md` as a planned sibling). It matters here
 because "send-as-user" would change what "the bot posted it" even means: if
 a future tool posts through a real user's own Slack token (impersonation)
 rather than the bot token, Slack's own authorship (and thus `chat.update`/
@@ -273,10 +272,10 @@ Two layers, both required for v1:
 
 2. **Secondary (new, cheap hardening): adapter-native `author.isMe` pre-check.**
    Before even looking at `chat().getState()`, resolve the target message
-   through the Chat SDK (`chat().getAdapter?.() ?? slack` — see Risks for the
+   through the Chat SDK (`chat().getAdapter?.() ?? slack`, see Risks for the
    exact call this repo can make today) and check `message.author.isMe`. If
    it's `false` (a human posted it, or a different app), fail immediately
-   with a clear, specific error ("that message wasn't sent by this bot") —
+   with a clear, specific error ("that message wasn't sent by this bot"),
    never surface Slack's raw `cant_update_message`/`cant_delete_message`, and
    never fall through to the more generic "no ownership record" error, which
    would otherwise look identical whether the message is a stranger's post or
@@ -396,8 +395,8 @@ not a new file under a not-yet-existing `slack-code/` directory. Reasons:
   `external_edit_message` dispatched from inside `createCodeMode`'s host-side
   `execute` (after `slack-code-mode.md` lands), the check runs identically.
   Per that plan's own read of the code-mode dispatch closure
-  (`slack-code-mode.md:135-164`), `tool2.execute(...)` — the real tool, this
-  one — always runs on the host inside the same process, never inside the
+  (`slack-code-mode.md:135-164`), `tool2.execute(...)`, the real tool, this
+  one, always runs on the host inside the same process, never inside the
   generated sandbox code. So an assertion inside `execute` is automatically
   "inside the host-side `external_*` implementation," satisfying this plan's
   own cross-cutting requirement from the brief without any code-mode-specific
@@ -431,7 +430,7 @@ a safety guardrail, not a preference) deletes that one `await
 assertCanManagePostedMessage(...)` line from each of the two files. There is
 deliberately **no env var or config flag** to disable this at runtime:
 CODING_STANDARDS.md's "don't add defensive checks for states that can't
-occur" cuts the other way for a guardrail like this — a togglable-by-mistake
+occur" cuts the other way for a guardrail like this, a togglable-by-mistake
 safety check is worse than one that requires an actual code edit to remove,
 and this repo already treats other authorization guards
 (`assertCanPostTo`/`assertReadableChannel` in gorkie, same file) the same

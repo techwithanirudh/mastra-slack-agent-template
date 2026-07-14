@@ -57,14 +57,14 @@ export const createChannelCanvasTool = createTool({
   }),
   execute: async ({ channelId, title, markdown }, context) => {
     const ctx = channelContext(context?.requestContext);
-    const id = channelId ?? ctx.channelId;
-    if (!id) {
+    const targetChannelId = channelId ?? ctx.channelId;
+    if (!targetChannelId) {
       throw new Error('No channel to create a channel canvas for.');
     }
-    assertCanManageChannel({ channelId: id, ctx });
+    assertCanManageChannel({ channelId: targetChannelId, ctx });
     try {
       const response = await slack.webClient.conversations.canvases.create({
-        channel_id: rawId(id),
+        channel_id: rawId(targetChannelId),
         ...(title ? { title } : {}),
         ...(markdown
           ? { document_content: { type: 'markdown' as const, markdown } }
@@ -72,7 +72,7 @@ export const createChannelCanvasTool = createTool({
       });
       return {
         success: true,
-        channelId: rawId(id),
+        channelId: rawId(targetChannelId),
         canvasId: response.canvas_id,
         message: `Created channel canvas ${response.canvas_id ?? ''}.`,
       };
@@ -80,7 +80,7 @@ export const createChannelCanvasTool = createTool({
       const reason = error instanceof Error ? error.message : String(error);
       if (reason.includes('channel_canvas_already_exists')) {
         throw new Error(
-          `${id} already has a canvas. Use edit_canvas to change it instead.`,
+          `${targetChannelId} already has a canvas. Use edit_canvas to change it instead.`,
           { cause: error }
         );
       }

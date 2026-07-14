@@ -24,10 +24,8 @@ nothing (searched every branch and reflog-reachable commit), and the full
 stash inventory (`git stash list` -> `stash@{0}` "wip: DM anchor + titles +
 mid-thread refetch fixes", `stash@{1}` "checkpoint: full WIP snapshot") has no
 `preferences.ts` in either (`git stash show --include-untracked <ref> --stat`
-for both). `plans/generalize-gorkie.md:131-138` also describes a
-`chat/preferences.ts` with "per-user tool-display preference" — that
-description doesn't match anything on disk or in git history either; treat it
-as aspirational, not authoritative, same as this plan's brief.
+for both). Treat the brief's description of a `chat/preferences.ts` as
+aspirational, not authoritative.
 
 **What actually exists, unmerged, is `src/mastra/chat/dm-anchor.ts`** (45
 lines), visible only via:
@@ -45,7 +43,7 @@ persona/instruction/tool-display data. It's useful here only as a *pattern*
 
 **The real, shipped precedent for this exact mechanism is
 `src/mastra/lib/allowed-users.ts`** in gorkie (tracked, on `dev`, not present
-in this template — it backs gorkie's opt-in allowlist, which this template
+in this template, it backs gorkie's opt-in allowlist, which this template
 intentionally dropped). Relevant shape:
 ```ts
 function allowlistKey(channel: string): string {
@@ -78,13 +76,13 @@ template's tree too):**
   form (opt-in is a single button, no text collection).
 
 Neither of these is a form. There is no `views.open` / `view_submission` /
-modal code anywhere in this repo today (confirmed by grep) — if this plan
+modal code anywhere in this repo today (confirmed by grep), if this plan
 wants a settings UI beyond natural language, it's new, not a port.
 
 **System prompt assembly (this repo).**
-`src/mastra/prompts/index.ts` (`buildInstructions`):
+`src/mastra/prompts/index.ts` (`instructions`):
 ```ts
-export function buildInstructions(requestContext: RequestContext): SystemMessage {
+export function instructions(requestContext: RequestContext): SystemMessage {
   const context = contextPrompt(requestContext);
   const messages: CoreSystemMessage[] = [
     { role: 'system', content: [corePrompt, personalityPrompt, slackPrompt, toolsPrompt].join('\n\n') },
@@ -108,14 +106,14 @@ export function contextPrompt(requestContext: RequestContext): string {
 `src/mastra/lib/context.ts` (`channelContext`) reads `requestContext.get('channel')`,
 typed as Mastra's `ChannelContext`
 (`node_modules/@mastra/core/dist/channels/types.d.ts:657-680`), which already
-carries `userId: string` (required) and `userName?: string` — no new plumbing
+carries `userId: string` (required) and `userName?: string`, no new plumbing
 needed to know *who* is asking. This is the field to key preferences on.
 
 `agents/orchestrator.ts:34` wires `instructions: ({ requestContext }) =>
-buildInstructions(requestContext)`. Mastra's `DynamicArgument<T>`
+instructions(requestContext)`. Mastra's `DynamicArgument<T>`
 (`node_modules/@mastra/core/dist/types/dynamic-argument.d.ts:3-6`) is `T |
-(({requestContext, mastra}) => Promise<T> | T)` — **an async instructions
-function is already supported**, so a Postgres read inside `buildInstructions`
+(({requestContext, mastra}) => Promise<T> | T)`, **an async instructions
+function is already supported**, so a Postgres read inside `instructions`
 requires no new plumbing, just making the function (and `contextPrompt`)
 `async` and updating the one call site.
 
@@ -131,7 +129,7 @@ requires no new plumbing, just making the function (and `contextPrompt`)
   no TTL means permanent), unrelated to Mastra's agent memory.
 - Mastra `Memory` / Observational Memory: `agents/orchestrator.ts:61-81`,
   explicitly `scope: 'thread'` (line 78). It **forgets across threads and
-  DMs by design** — `TODO.md:132-133,139-140` even flag thread-scoped memory
+  DMs by design**, `TODO.md:132-133,139-140` even flag thread-scoped memory
   as still being evaluated for whether it should stay the default. Declared
   preferences must survive every thread for a user, forever, which is
   structurally incompatible with thread-scoped memory. **Memory is learned
@@ -142,7 +140,7 @@ requires no new plumbing, just making the function (and `contextPrompt`)
   or fragment preferences too. This plan puts preferences in the
   `StateAdapter`, entirely decoupled from Mastra threads/resources.
 
-**Usage footer — the second, concrete consumer this store must serve.**
+**Usage footer, the second, concrete consumer this store must serve.**
 `src/mastra/processors/turns.ts:97-120`, inside the `turns` output
 processor's `processOutputResult`:
 ```ts
@@ -152,20 +150,17 @@ if (threadId && ctx.platform === 'slack' && (hasTextResponse || hasVisibleToolCa
 }
 ```
 Posts unconditionally today. `TODO.md:182`: "Let users disable the
-usage/cost footer shown under responses" is unimplemented;
-`plans/README.md:38` lists `usage-indicator-toggle.md` as its plan (not yet
-written at research time for this plan). The gating this store must support
+usage/cost footer shown under responses" is unimplemented. The gating this store must support
 is a single `if (prefs.showUsageFooter === false) return args.messages;`
 guard, once `ctx.userId`/`ctx.platform` are available (they already are, via
 `channelContext(args.requestContext)` on line 33).
 
-**App Home — the natural settings surface.**
-`src/mastra/chat/events.ts:39-74` (`HOME_VIEW`), published via
-`slack.publishHomeView(userId, HOME_VIEW)` (line 76-82) on
-`bot.onAppHomeOpened` (line 95). Raw Slack Block Kit JSON (`Record<string,
+**App Home, the natural settings surface.**
+`src/mastra/chat/content.ts` (`content.home`), published by
+`src/mastra/chat/app-home.ts` on `bot.onAppHomeOpened`. Raw Slack Block Kit JSON (`Record<string,
 unknown>`, per `@chat-adapter/slack`'s
 `publishHomeView(userId: string, view: Record<string, unknown>):
-Promise<void>`), not Chat SDK's `Card` JSX — App Home has no cross-platform
+Promise<void>`), not Chat SDK's `Card` JSX, App Home has no cross-platform
 equivalent, so this is inherently Slack-only. The view currently ends in:
 ```ts
 { type: 'context', elements: [{ type: 'mrkdwn', text: 'More settings coming soon.' }] }
@@ -189,8 +184,7 @@ function userPreferencesKey({ platform, userId }: { platform: string; userId: st
 ```
 
 `${platform}:${userId}` is not an arbitrary choice: it is exactly Mastra's
-built-in `resourceId` derivation for channel threads —
-`` `${platform}:${message.author.userId}` ``
+built-in `resourceId` derivation for channel threads, `` `${platform}:${message.author.userId}` ``
 (`node_modules/@mastra/core/dist/channels/types.d.ts:288`, the documented
 `defaultResourceId`, unchanged since this repo doesn't set
 `resolveResourceId`). Reusing that exact format means a tool that already has
@@ -214,13 +208,13 @@ export interface UserPreferences {
 }
 ```
 
-Deliberately NOT a `toolVisibility` field yet — that's a future plan's job to
+Deliberately NOT a `toolVisibility` field yet, that's a future plan's job to
 add a field here when it lands, not this plan's job to guess its shape. The
 point of naming the type once in `types/user.ts` is that adding a field is a
 one-line diff for whichever plan needs it next, instead of a new store.
 
 `lib/preferences.ts` owns validation (Zod, per `CODING_STANDARDS.md`'s
-"parse untrusted input at boundaries, never `JSON.parse(...) as T`" — the
+"parse untrusted input at boundaries, never `JSON.parse(...) as T`", the
 `StateAdapter` returns `unknown` under the hood, `get<T>()`'s generic is a
 convenience cast, not a guarantee):
 
@@ -266,14 +260,14 @@ export async function setUserPreferences(
 
 Missing key or read failure both resolve to `{}` (all fields absent = every
 feature's documented default: no extra instructions, footer shown). No
-feature has to special-case "not set yet" versus "explicitly reset" — both
+feature has to special-case "not set yet" versus "explicitly reset", both
 look like an empty object, which is the right behavior for all three
 consumers today.
 
 ### Custom instructions: injection point
 
 Extend `contextPrompt` (the one existing per-request system-message
-injection point) rather than adding a third system message — keeps token
+injection point) rather than adding a third system message, keeps token
 overhead to "one more short paragraph," not a new message with its own
 role/formatting overhead:
 
@@ -297,10 +291,10 @@ export async function contextPrompt(requestContext: RequestContext): Promise<str
 }
 ```
 
-`buildInstructions` (`prompts/index.ts`) becomes `async` to `await
+`instructions` (`prompts/index.ts`) becomes `async` to `await
 contextPrompt(...)`; the one call site
 (`agents/orchestrator.ts:34`, `instructions: ({ requestContext }) =>
-buildInstructions(requestContext)`) needs no change since `DynamicArgument`
+instructions(requestContext)`) needs no change since `DynamicArgument`
 already accepts a `Promise<T>` return.
 
 **Why subordinate it explicitly in the string, not just append it:** this
@@ -316,10 +310,10 @@ text alone.
 **Cost.** One extra `StateAdapter.get` (a KV read, not an LLM call) per turn
 that has a channel context, only when `ctx.userId` is present. Negligible
 relative to the LLM round-trip. Zero cost when unset (empty string, no extra
-tokens) — this is the "inject only when set" rule from the brief, enforced
+tokens), this is the "inject only when set" rule from the brief, enforced
 structurally by `if (prefs.customInstructions)`.
 
-### How the user sets it — two paths, one store
+### How the user sets it, two paths, one store
 
 **Primary: natural language, via a tool.** Cheapest to build, works
 identically on every platform Chat SDK supports (no Slack-specific UI
@@ -347,30 +341,29 @@ export const setCustomInstructionsTool = createTool({
 
 Plus `get_custom_instructions` (read-back, for "what have I told you to
 remember?") and `clear_custom_instructions` (sets the field to `undefined` by
-patching with an explicit clear — `setUserPreferences` as sketched does a
+patching with an explicit clear, `setUserPreferences` as sketched does a
 shallow merge, so clearing needs a small variant, see Implementation steps).
 All three follow `tools/wait.ts`'s shape (single options-object input,
 Zod schema, no side class). Register in `tools/base.ts` next to the other
 tool groups.
 
 **Secondary: App Home settings modal.** This is the shared surface the brief
-asked for — the same modal this plan scaffolds is where the usage-footer
+asked for, the same modal this plan scaffolds is where the usage-footer
 toggle and (later) tool-visibility toggle add their own field, instead of
 each shipping its own button/view. Built entirely on Chat SDK's existing,
-already cross-platform-designed (Slack + Teams today) modal primitives —
-confirmed against the pinned package's own docs,
+already cross-platform-designed (Slack + Teams today) modal primitives, confirmed against the pinned package's own docs,
 `node_modules/chat/docs/modals.mdx` and `actions.mdx`, not guessed:
 
-- `ActionEvent.openModal(modal: ModalElement | ChatElement)` — opens a form
+- `ActionEvent.openModal(modal: ModalElement | ChatElement)`, opens a form
   in response to a button click (`chat-Dm1vQU3i.d.ts:1885-1887`).
 - `Modal({ callbackId, title, submitLabel, children })`,
-  `TextInput({ id, label, multiline, maxLength, initialValue, optional })` —
+  `TextInput({ id, label, multiline, maxLength, initialValue, optional })`,
   JSX-style builders exported from `chat` (`jsx-runtime-CzthIo1o.d.ts:438-460`).
-- `bot.onModalSubmit(callbackId, handler)` — `event.values: Record<string,
+- `bot.onModalSubmit(callbackId, handler)`, `event.values: Record<string,
   string>` keyed by input `id` (`chat-Dm1vQU3i.d.ts:1949-1983,2853-2854`).
   Handler can return `{ action: 'errors', errors: { fieldId: 'message' } }`
-  for server-side validation shown inline in the modal (`modals.mdx:213-219`)
-  — use this for the length cap instead of silently truncating.
+  for server-side validation shown inline in the modal (`modals.mdx:213-219`),
+  use this for the length cap instead of silently truncating.
 
 Underlying Slack mechanics (for context, already wrapped by the above):
 `views.publish` publishes the Home tab and `app_home_opened` is the event to
@@ -390,7 +383,7 @@ Sketch:
 // chat/events.ts additions (sketch)
 const SETTINGS_MODAL_CALLBACK_ID = 'user_settings';
 
-// Inside HOME_VIEW's blocks, replace the "More settings coming soon" context
+// Inside content.home's blocks, replace the "More settings coming soon" context
 // block with an actions block:
 {
   type: 'actions',
@@ -438,7 +431,7 @@ export function registerSettings(bot: Chat): void {
 ```
 
 Called once from wherever `registerEvents()` is called
-(`chat/events.ts:84`'s caller — same module init path).
+(`chat/events.ts:84`'s caller, same module init path).
 
 **Why not a `!instructions` bang-command** (the pattern `chat/commands/`
 already established for `!stop`): that convention is for short control-plane
@@ -482,7 +475,7 @@ which is negligible next to `config.agent.maxTokens.input` (200k,
 4. `src/mastra/prompts/context.ts`: make `contextPrompt` `async`, read
    `getUserPreferences` when `ctx.userId` is set, append the `<preferences>`
    block only when `customInstructions` is non-empty.
-5. `src/mastra/prompts/index.ts`: make `buildInstructions` `async`, `await
+5. `src/mastra/prompts/index.ts`: make `instructions` `async`, `await
    contextPrompt(...)`.
 6. `src/mastra/tools/preferences/` (new directory, matching
    `tools/scheduled-tasks/`'s pattern of one file per operation):
@@ -519,7 +512,7 @@ which is negligible next to `config.agent.maxTokens.input` (200k,
   table(s) for the `StateAdapter` interface already; this plan only adds new
   *keys* (`user-prefs:${platform}:${userId}`) under that existing schema, no
   DDL. Flagging per `CODING_STANDARDS.md`'s "ask first: schema-shape
-  changes" — this is a new key namespace, not a schema change, but worth the
+  changes", this is a new key namespace, not a schema change, but worth the
   maintainer's eyes before merging since it's new persistent state either way.
 - **Slack manifest:** none. App Home is already enabled
   (`home_tab_enabled`, per `TODO.md:48-52`); a button inside an existing
@@ -542,13 +535,13 @@ which is negligible next to `config.agent.maxTokens.input` (200k,
   maintainer later sets `channels.resolveResourceId` (e.g. to share memory
   across an SSO identity spanning platforms, per its own doc example at
   `node_modules/@mastra/core/dist/channels/types.d.ts:461-464`), Mastra
-  memory ownership and this store's key would silently diverge — memory
+  memory ownership and this store's key would silently diverge, memory
   would follow the custom resourceId, preferences would stay keyed on raw
   `platform:userId`. That's arguably correct (preferences are a platform
   identity concept, memory ownership is a business concept), but it's a
   decision, not an accident; call it out if `resolveResourceId` is ever
   added.
-- **Home-tab button compatibility unverified.** `HOME_VIEW` is raw Slack
+- **Home-tab button compatibility unverified.** `content.home` is raw Slack
   Block Kit JSON (`chat/events.ts:39-74`), not built via Chat SDK's `Card`
   JSX. `bot.onAction` is documented to work for home-tab buttons generally
   (`actions.mdx:49`: "`thread: null` for view-based actions like home tab
@@ -569,7 +562,7 @@ which is negligible next to `config.agent.maxTokens.input` (200k,
   workspaces sharing one bot process, two different people with the same
   `userId` in different workspaces can't happen (Slack user IDs are
   workspace-scoped, `U...` is unique per team already embedding team
-  context via the token), so this isn't actually a collision risk today —
+  context via the token), so this isn't actually a collision risk today,
   noting only because `multi-platform.md` adding Discord/Telegram means
   `platform:userId` must keep including `platform` as it already does; don't
   drop it as a "simplification" later.
@@ -583,7 +576,7 @@ which is negligible next to `config.agent.maxTokens.input` (200k,
 
 **M.** Core (steps 1-8: store, prompt injection, three tools) is small and
 low-risk, roughly a day. The App Home modal (steps 9-10) is the part that
-pushes this to M rather than S — not because the Chat SDK API is heavy (it
+pushes this to M rather than S, not because the Chat SDK API is heavy (it
 isn't, per the docs cited above), but because it's genuinely new
 infrastructure for this repo (first `onAction`/`onModalSubmit` usage) and
 needs live verification in a running Slack instance per this repo's testing
@@ -591,13 +584,7 @@ constraints. If the maintainer wants a smaller first PR, steps 1-8 (natural
 language only) can ship alone and steps 9-11 (App Home settings surface)
 follow as a fast-follow; the shared store design doesn't change either way.
 
-**Dependencies:** none blocking — this plan should land first since
-`plans/usage-indicator-toggle.md` and any future tool-visibility toggle are
-designed here to consume `lib/preferences.ts` and extend the same App Home
-modal rather than building their own. `plans/generalize-gorkie.md:418-425`
-already anticipates this plan for its own `identity.persona` vs.
-saved-custom-instructions precedence question — once this lands, that plan's
-`core.ts`/`personality.ts` opener should state explicitly that
-`identity.persona` (bot-wide, config-driven) and a user's
-`customInstructions` (per-user, declared) are separate, additive layers, not
-alternatives to merge.
+**Dependencies:** none blocking. This plan should land before any future
+usage-footer or tool-visibility toggle so those features can consume
+`lib/preferences.ts` and extend the same App Home modal rather than building
+their own.

@@ -36,7 +36,7 @@ places that currently assume Slack is the only platform.
   per `node_modules/@mastra/core/dist/channels/types.d.ts:315-317`, and
   `handlers` (`src/mastra/chat/handlers.ts`) are platform-agnostic Chat SDK
   callbacks `(thread: Thread, message: Message, defaultHandler) => Promise<void>`
-  shared across every adapter registered here — there is no per-adapter
+  shared across every adapter registered here, there is no per-adapter
   handler wiring to duplicate.
 - `src/mastra/index.ts:52-63` calls `orchestrator.getChannels()?.initialize(mastra)`
   once; `AgentChannels.initialize` (`node_modules/@mastra/core/dist/channels/agent-channels.d.ts:116-119`)
@@ -50,7 +50,7 @@ places that currently assume Slack is the only platform.
 
 ### Slack-only couplings found (cited, not assumed)
 
-1. **`src/mastra/lib/ids.ts:1-11`** — `rawId`, `chatChannelId`, `chatThreadId`
+1. **`src/mastra/lib/ids.ts:1-11`**, `rawId`, `chatChannelId`, `chatThreadId`
    hardcode the `slack:` prefix (`id.replace(/^slack:/, '')`,
    `` `slack:${rawId(id)}` ``). Every tool that calls these
    (`get_channel_info`, `read_conversation_history`, `list_threads`,
@@ -58,26 +58,26 @@ places that currently assume Slack is the only platform.
    `telegram:...` id today. This is the single highest-leverage fix: most
    tools become cross-platform for free once this stops assuming Slack.
 
-2. **`src/mastra/chat/handlers.ts:69`** — `onMention` calls
+2. **`src/mastra/chat/handlers.ts:69`**, `onMention` calls
    `slack.decodeThreadId(message.threadId).threadTs === message.id` to
    detect whether a mention is at the thread root. `decodeThreadId` is a
    `SlackAdapter`-only method (`node_modules/@chat-adapter/slack/dist/index.d.ts:906`),
    not part of the base `Adapter` interface, so this line throws or
    misbehaves the instant a Discord/Telegram message reaches `onMention`.
 
-3. **`src/mastra/chat/message.ts:1-13`** — `rawText()` parses `message.raw`
+3. **`src/mastra/chat/message.ts:1-13`**, `rawText()` parses `message.raw`
    looking for a Slack-shaped `{ text: string }` payload to recover the
    *raw* mention token syntax (`<@U123|label>`) that
    `withoutLeadingMentions` (`message.ts:11-13`) strips before command
    detection (`##`-ignore, `!stop`). `message.text` (the Chat SDK's
    platform-normalized field, "Plain text content, all formatting
-   stripped" — `node_modules/chat/dist/chat-Dm1vQU3i.d.ts:2399-2400`) has
+   stripped", `node_modules/chat/dist/chat-Dm1vQU3i.d.ts:2399-2400`) has
    already converted mentions to display form by the time it reaches
    `rawText`'s fallback, so leading-mention stripping degrades (not
    crashes) on Discord/Telegram: a leading `@BotName` won't be stripped
    before the `##`/`!command` check runs.
 
-4. **`src/mastra/chat/adapter.ts` (`SlackAgentAdapter`)** — the recipient-stash
+4. **`src/mastra/chat/adapter.ts` (`SlackAgentAdapter`)**, the recipient-stash
    override (`stream()`, lines 54-85) and `resolveInlineMentions` (lines
    87-126) exist to work around a Slack Assistant-API quirk (scheduled runs
    need `recipientUserId`/`recipientTeamId` outside DMs). This is legitimately
@@ -87,7 +87,7 @@ places that currently assume Slack is the only platform.
    `src/mastra/tools/base.ts:1-16`'s `slackTools` and `canvasTools`):
    - No cross-platform analog, keep Slack-only:
      `tools/canvas/{create,read,update}.ts` (`slack.webClient.conversations.canvases.create`,
-     `.canvases.edit`, `.files.info` — Slack Canvas has no Discord/Telegram
+     `.canvases.edit`, `.files.info`, Slack Canvas has no Discord/Telegram
      equivalent), `tools/slack/search-slack.ts:101` (`assistant.search.context`,
      a Slack Assistant API), `tools/slack/get-slack-file.ts:71` (`files.info`),
      `tools/slack/leave-channel.ts:44` (`conversations.leave`).
@@ -113,8 +113,8 @@ places that currently assume Slack is the only platform.
      message's actual platform. These methods are declared on the base
      `Adapter` interface itself
      (`node_modules/chat/dist/chat-Dm1vQU3i.d.ts:545,574,616,652`, `editMessage`
-     at 553, `deleteMessage` at 549) — some optional, with per-platform
-     support noted in the feature matrix below — so swapping
+     at 553, `deleteMessage` at 549), some optional, with per-platform
+     support noted in the feature matrix below, so swapping
      `slack.<method>` for `chat().getAdapter(platform).<method>()`
      (`getAdapter<K>` at `chat-Dm1vQU3i.d.ts:2922`) makes them work anywhere
      the adapter implements the method. `tools/slack/edit-message.ts` and
@@ -125,11 +125,11 @@ places that currently assume Slack is the only platform.
    - This whole cluster is TODO.md's open "Cross-platform tools" item
      (`TODO.md`: *"make Slack-only tools work on other platforms where the
      Chat SDK supports it... route through the adapter/Chat SDK generic
-     surface instead of `slack.webClient` where possible"*) — this plan is
+     surface instead of `slack.webClient` where possible"*), this plan is
      that item, done as part of adding the second and third platform so the
      generalization has real adapters to test against.
 
-6. **`src/mastra/types/channel.ts:6`** — `SlackAgentRequestContext` is a
+6. **`src/mastra/types/channel.ts:6`**, `SlackAgentRequestContext` is a
    generic `RequestContext<{ channel?: ChannelContext }>` wrapper with a
    Slack-specific name. `ChannelContext` itself (line 4, re-exported from
    `@mastra/core/channels`) is already platform-agnostic: `platform: string`,
@@ -144,7 +144,7 @@ only `shared`, `slack`, `state-pg`, and gorkie's `channels` config
 (`/workspaces/gorkie/src/mastra/agents/gorkie.ts:72-85`) registers a single
 `slack` adapter, structurally identical to this repo's. So per the
 brief's Process rule, there is nothing to port for the adapter registration
-itself — this is new work, not a strip-down of a gorkie feature. The couplings
+itself, this is new work, not a strip-down of a gorkie feature. The couplings
 listed above (items 1-6) are equally present in gorkie's `dev` branch (its
 `chat/handlers.ts` has the same `slack.decodeThreadId` call, just wrapped in
 extra gorkie-specific onboarding/allow-list logic that this template already
@@ -187,7 +187,7 @@ registry currently serves `4.33.0` for both
 compatible with this repo's pinned `"chat": "^4.32.0"` /
 `"@chat-adapter/slack": "^4.32.0"`. Neither package is present in
 `node_modules` yet (`ls node_modules/@chat-adapter` → `shared`, `slack`,
-`state-pg` only) — this is a real dependency addition, flagged below for
+`state-pg` only), this is a real dependency addition, flagged below for
 approval per `.claude/CLAUDE.md`.
 
 Feature parity (from `node_modules/chat/docs/platform-adapters.mdx`'s
@@ -216,7 +216,7 @@ Feature parity (from `node_modules/chat/docs/platform-adapters.mdx`'s
 Deployment mode, verified from each adapter's published README
 (`npm view @chat-adapter/discord readme` / `@chat-adapter/telegram readme`):
 
-- **Discord**: two independent transports — HTTP Interactions (buttons,
+- **Discord**: two independent transports, HTTP Interactions (buttons,
   slash commands, works serverless) and Gateway WebSocket (regular messages
   and reactions, requires a persistent connection). This repo is a
   long-running Bun process, so Discord runs the same way Slack Socket Mode
@@ -226,7 +226,7 @@ Deployment mode, verified from each adapter's published README
   no public HTTP server needed for a Socket-Mode-shaped deployment.
 - **Telegram**: `mode: "auto"` (the adapter's default) picks webhook on
   serverless platforms and long-polling (`getUpdates`) everywhere else,
-  including local dev and long-running processes — again, no public URL
+  including local dev and long-running processes, again, no public URL
   required, matching this repo's no-inbound-webhook posture. Requires
   `void bot.initialize()` to actually start polling in a long-running
   process, which `AgentChannels.initialize()` already does.
@@ -236,7 +236,7 @@ Deployment mode, verified from each adapter's published README
 ### Registration surface: one map, one line per platform
 
 The template's ergonomic goal is already met by Mastra's `channels.adapters`
-shape — it is *already* `Record<string, Adapter | ChannelAdapterConfig>`.
+shape, it is *already* `Record<string, Adapter | ChannelAdapterConfig>`.
 Adding a platform is: construct the adapter once in `chat/client.ts`
 (mirroring the existing `slack` export), add one key to the `adapters` map
 in `orchestrator.ts`, add its env vars to `src/env.ts` as `.optional()`.
@@ -246,7 +246,7 @@ adapter, `toolDisplay` and `threadContext` already apply per-adapter with
 sane per-adapter fallback (the streaming-only `toolDisplay` modes
 `'timeline'`/`'grouped'` auto-fall back to `'cards'`/static rendering with a
 one-time warning per platform, per `agent-channels.d.ts:276-289`'s
-`resolveToolDisplay` doc comment — Discord/Telegram render the same
+`resolveToolDisplay` doc comment, Discord/Telegram render the same
 `taskUpdate`-shaped tool cards, just via post+edit instead of a live
 `StreamingPlan`).
 
@@ -258,7 +258,7 @@ gives them, exactly the "billion statements" sprawl `.claude/CLAUDE.md` warns
 against. Instead:
 
 ```ts
-// src/mastra/agents/orchestrator.ts — the only registration point
+// src/mastra/agents/orchestrator.ts, the only registration point
 channels: {
   state: createPostgresState({ url: env.DATABASE_URL }),
   chatOptions: { fallbackStreamingPlaceholderText: 'working...' },
@@ -273,7 +273,7 @@ channels: {
 ```
 
 Opt-in is a plain `undefined` check on the exported adapter (see
-`chat/client.ts` below), not a feature flag or a separate config file — a
+`chat/client.ts` below), not a feature flag or a separate config file, a
 template user who never sets `DISCORD_BOT_TOKEN` gets `discord === undefined`,
 the spread contributes nothing, and the object shape collapses back to
 today's Slack-only map. `bun run typecheck` still needs the branches typed;
@@ -284,7 +284,7 @@ is a real `false`/object union, not an `as` cast.
 
 `@chat-adapter/discord`/`@chat-adapter/telegram` both auto-read their
 canonical env var names when constructed with no args (`createDiscordAdapter()`,
-`createTelegramAdapter()` — confirmed in both READMEs). So `chat/client.ts`
+`createTelegramAdapter()`, confirmed in both READMEs). So `chat/client.ts`
 doesn't need to thread values through by hand; it only needs to know
 *whether* to construct the adapter at all, which requires the vars to be
 `.optional()` in `src/env.ts` (never `process.env` read outside it, per
@@ -301,14 +301,13 @@ export const telegram = env.TELEGRAM_BOT_TOKEN
   : undefined;
 ```
 
-Only `DISCORD_BOT_TOKEN` and `TELEGRAM_BOT_TOKEN` gate construction —
-`DISCORD_PUBLIC_KEY`/`DISCORD_APPLICATION_ID` are required by Discord's own
+Only `DISCORD_BOT_TOKEN` and `TELEGRAM_BOT_TOKEN` gate construction, `DISCORD_PUBLIC_KEY`/`DISCORD_APPLICATION_ID` are required by Discord's own
 constructor once `DISCORD_BOT_TOKEN` is set (fail loudly there, not silently
 skip), matching the pattern where `SLACK_APP_TOKEN`/`SLACK_BOT_TOKEN` are
 both plain non-optional `z.string().min(1)` today. Consider whether
 `DiscordAgentAdapter`/`TelegramAgentAdapter` need to exist at all as
 subclasses, or whether the base `createDiscordAdapter`/`createTelegramAdapter`
-factories suffice unmodified — see Implementation step 1.
+factories suffice unmodified, see Implementation step 1.
 
 ### Fixing the Slack-only couplings (the actual generalization work)
 
@@ -320,7 +319,7 @@ In priority order, because each unblocks a cluster of tools:
    `node_modules/@mastra/core/dist/channels/types.d.ts:664`-`665`). `rawId`
    should strip *whatever* platform prefix is present (split on the first
    `:` unconditionally, not `slack:` specifically), and `chatChannelId`/
-   `chatThreadId` need the caller's platform to re-prefix correctly —
+   `chatThreadId` need the caller's platform to re-prefix correctly,
    which means they need a `platform` parameter (dict-param per
    `CODING_STANDARDS.md`'s "Dict params" rule) instead of assuming Slack.
    Every call site (`get-channel-info.ts`, `read-conversation-history.ts`,
@@ -337,7 +336,7 @@ In priority order, because each unblocks a cluster of tools:
    with the adapter resolved generically: `chat().getAdapter(ctx.platform).decodeThreadId?.(...)`
    guarded by an `in` check, since `decodeThreadId` *is* declared on the base
    `Adapter` interface (`chat-Dm1vQU3i.d.ts:547`) even though its return
-   shape (`TThreadId`) is adapter-specific — every adapter must implement it.
+   shape (`TThreadId`) is adapter-specific, every adapter must implement it.
    Recommendation: (b), since it needs no platform branching in `handlers.ts`
    itself and stays inside the one generic call. Needs verification against
    Discord/Telegram's actual `decodeThreadId` return shape once those
@@ -353,7 +352,7 @@ In priority order, because each unblocks a cluster of tools:
    `content` field too is a small, mechanical addition, not a rewrite.
    Telegram doesn't use inline mention tokens at all (entities are
    positional, out-of-band), so `withoutLeadingMentions` naturally becomes a
-   no-op there and `message.text` is already correct as-is — no fallback
+   no-op there and `message.text` is already correct as-is, no fallback
    needed for Telegram specifically.
 
 4. **Tool tier reclassification** (implements TODO.md's "Cross-platform
@@ -368,14 +367,14 @@ In priority order, because each unblocks a cluster of tools:
    generic `target: targetSchema` + `messageId` shape already used by
    `post_message`/`upload_file`. Tools with no cross-platform analog
    (`canvas/*`, `search_slack`, `get_slack_file`, `leave_channel`) get a
-   guard at the top of `execute` — `if (channelContext(...).platform !== 'slack') throw new Error(...)`
-   — rather than being silently unavailable, so the model gets an
+   guard at the top of `execute`, `if (channelContext(...).platform !== 'slack') throw new Error(...)`,
+   rather than being silently unavailable, so the model gets an
    actionable error instead of a confusing tool-not-found.
 
 5. **Rename `SlackAgentRequestContext`** → a platform-neutral name (e.g.
    `AgentRequestContext`) in `src/mastra/types/channel.ts`, since the type
    itself already carries `ChannelContext.platform: string` and has never
-   been Slack-specific in shape, only in name — a `CODING_STANDARDS.md`
+   been Slack-specific in shape, only in name, a `CODING_STANDARDS.md`
    "Direct names" violation once a second platform exists. Every import
    site (`lib/context.ts:2`, plus wherever else it's imported) needs the
    rename followed through, per `CODING_STANDARDS.md`'s "search for the old
@@ -390,9 +389,9 @@ Canvases, `search_slack`'s `assistant.search.context`, `get_slack_file`,
 `tools/slack/` and `tools/canvas/`, ungated in `baseTools` (all platforms'
 agents see the tool schema), but each `execute` throws a clear
 platform-mismatch error rather than silently failing or being conditionally
-excluded from the tool list — conditionally excluding tools per platform
+excluded from the tool list, conditionally excluding tools per platform
 would require `tools` to become a `DynamicArgument<TTools, TRequestContext>`
-function (`node_modules/@mastra/core/dist/agent/types.d.ts:546` — Agent does
+function (`node_modules/@mastra/core/dist/agent/types.d.ts:546`, Agent does
 support this), which adds a genuine branch point for a marginal ergonomics
 win over a clear runtime error; not worth it for a template whose target
 audience adds platforms one at a time and will notice a Slack-only tool
@@ -405,13 +404,13 @@ No new token cost: `toolDisplay` is the same function reused across all
 three adapters (`chat/tool-display/index.ts`), so no extra model calls per
 platform. `generateTitle` (`agents/orchestrator.ts:62-66`) already runs
 per-thread on the cheap `summarizer` model regardless of which platform
-created the thread — Discord/Telegram threads get titled the same way Slack
+created the thread, Discord/Telegram threads get titled the same way Slack
 DMs do today (per `TODO.md`'s already-shipped titles item). Traces
 (`Observability` in `src/mastra/index.ts:38-46`) are keyed by run, not by
 platform, so Discord/Telegram runs show up in the same DuckDB-backed trace
 view with no additional wiring. The one thing to watch: Discord's
 Post+Edit streaming fallback issues more platform API calls per turn than
-Slack's native streaming — this is a Discord-side rate-limit concern, not a
+Slack's native streaming, this is a Discord-side rate-limit concern, not a
 token-cost concern, and is entirely inside `@chat-adapter/discord`'s
 `updateIntervalMs` handling (`StreamingConfig`, already configurable per
 adapter in `types.d.ts:170-172` if the default cadence turns out to be too
@@ -424,11 +423,11 @@ byte-identical behavior to today: `discord`/`telegram` are `undefined`, the
 spread in `orchestrator.ts`'s `adapters` map contributes nothing, no
 `discord.js`/`discord-api-types`/`discord-interactions` code path executes
 (the packages are still installed as `dependencies`, which is the one real
-cost — see Data/config changes for why this can't be made truly zero-install
+cost, see Data/config changes for why this can't be made truly zero-install
 without a bigger dependency-injection change that isn't worth it for two
 lightweight, tree-shakeable packages). To remove a platform entirely later,
 delete its `chat/client.ts` export, its `orchestrator.ts` map entry, its
-`.env.example` block, and its `package.json` dependency — four grep-able
+`.env.example` block, and its `package.json` dependency, four grep-able
 spots, no scattered wiring.
 
 ## Implementation steps
@@ -443,7 +442,7 @@ spots, no scattered wiring.
    `node -e "require('chat/adapters').getAdapter('discord')"`-style checks
    against the now-present `node_modules/@chat-adapter/discord/dist/*.d.ts`
    to confirm `decodeThreadId`'s return shape and `editMessage`/`deleteMessage`
-   signatures before writing step 4's generic tool rewrites — the catalog's
+   signatures before writing step 4's generic tool rewrites, the catalog's
    `.d.ts` (`chat/dist/adapters/index.d.ts`) only carries metadata, not the
    adapter class itself.
 
@@ -460,13 +459,13 @@ spots, no scattered wiring.
    ```
    Add a Zod `.refine()` (or a follow-up check in `chat/client.ts`) so that
    if `DISCORD_BOT_TOKEN` is set, `DISCORD_PUBLIC_KEY`/`DISCORD_APPLICATION_ID`
-   are also required — partial Discord config should fail fast at boot, not
+   are also required, partial Discord config should fail fast at boot, not
    at first webhook.
 
 3. **`src/mastra/chat/client.ts`**: add `discord`/`telegram` exports beside
    `slack`, each `undefined` unless its bot token is set (see Design
    sketch). Decide during implementation whether either needs a subclass
-   like `SlackAgentAdapter` — likely no for Telegram (no known quirks to
+   like `SlackAgentAdapter`, likely no for Telegram (no known quirks to
    patch), possibly no for Discord either since the recipient-stash
    workaround in `adapter.ts` is Slack Assistant-API-specific; only add a
    subclass if a real quirk surfaces in testing, per "inline over extract."
@@ -474,7 +473,7 @@ spots, no scattered wiring.
 4. **`src/mastra/agents/orchestrator.ts`**: extend the `adapters` map per
    the Design sketch. Reuse the existing `toolDisplay` and a per-adapter
    `formatError` (can share one function across all three if the message
-   doesn't need to be platform-specific — check whether "Oops, something
+   doesn't need to be platform-specific, check whether "Oops, something
    went wrong" reads fine on Discord/Telegram before assuming a shared
    formatter, since the current one uses Slack `*bold*` mrkdwn syntax which
    Chat SDK should translate per-platform automatically via its
@@ -502,7 +501,7 @@ spots, no scattered wiring.
 
 8. **Tool tier rewrites** (`src/mastra/tools/slack/`): `read-conversation-history.ts`,
    `list-threads.ts`, `summarize-thread.ts`, `edit-message.ts`,
-   `delete-message.ts` — swap the `slack` singleton import for
+   `delete-message.ts`, swap the `slack` singleton import for
    `chat().getAdapter(ctx.platform)`, add the not-supported guard for
    optional `Adapter` methods, and (for edit/delete) replace the
    Slack-URL input schema with `target: targetSchema, messageId: z.string()`.
@@ -520,9 +519,9 @@ spots, no scattered wiring.
     `docs/configuration.md` (if that's where Slack app setup currently
     lives) pointing at step 2-4 above as the four things a template user
     touches. Confirm `docs/configuration.md`'s exact current content before
-    writing this step — not read during this research pass.
+    writing this step, not read during this research pass.
 
-11. **`.claude/skills` / `AGENTS.md`**: no change expected — the `chat-sdk`
+11. **`.claude/skills` / `AGENTS.md`**: no change expected, the `chat-sdk`
     skill already documents multi-adapter registration generically.
 
 ## Data / schema / config changes
@@ -530,7 +529,7 @@ spots, no scattered wiring.
 **New dependencies (needs approval):**
 - `@chat-adapter/discord@^4.32.0`, `@chat-adapter/telegram@^4.32.0`
 - Discord peer deps: `discord-api-types`, `discord-interactions`, `discord.js`
-- No new state/storage dependency — `createPostgresState` already backs all
+- No new state/storage dependency, `createPostgresState` already backs all
   adapters registered on the same `channels.state`.
 
 **Env vars** (add to `src/env.ts` and `.env.example`, all optional):
@@ -556,21 +555,21 @@ step; `mode: 'auto'` handles the rest.
 
 **Function-signature change**: `rawId`/`chatChannelId`/`chatThreadId` in
 `lib/ids.ts` change from single-string params to a `{ id, platform }` dict
-per `CODING_STANDARDS.md`'s "Dict params" rule — this is a breaking change
+per `CODING_STANDARDS.md`'s "Dict params" rule, this is a breaking change
 to their four call sites, all within this repo, all updated in step 5.
 
 ## Risks & open questions
 
 - **`handlers.ts:69`'s root-mention check** (Design step 2 / Implementation
   step 6) needs Discord and Telegram's actual `decodeThreadId` return shapes
-  to finalize — currently only Slack's is known. Flagged as the one step in
+  to finalize, currently only Slack's is known. Flagged as the one step in
   this plan that can't be fully speced until dependencies are installed.
 - **Discord "Message Content Intent"** is a privileged intent Discord can
   gate behind app verification for bots in 100+ servers; irrelevant for a
   template/personal-use deployment but worth a one-line callout in setup
   docs so it doesn't surprise someone scaling up later.
 - **Telegram has no `listThreads`** (feature matrix: Cross) and only
-  "cached" `fetchChannelMessages` — `list_threads` and
+  "cached" `fetchChannelMessages`, `list_threads` and
   `read_conversation_history` will throw a clear "not supported on
   telegram" error there rather than silently returning nothing; confirm
   that's the desired UX versus omitting the tool for Telegram-originated
@@ -580,19 +579,19 @@ to their four call sites, all within this repo, all updated in step 5.
   mrkdwn (`*bold*`); need to verify Chat SDK's markdown-to-native conversion
   actually handles this correctly for Discord (which uses `**bold**`) and
   Telegram (MarkdownV2, which requires escaping many punctuation
-  characters) before assuming one shared formatter works everywhere —
+  characters) before assuming one shared formatter works everywhere,
   otherwise each adapter needs its own `formatError`, a small addition to
   the Design step 4 sketch, not a redesign.
   Reference: `node_modules/chat/docs/posting-messages.mdx` covers this
   conversion; not read during this research pass, read before implementing
   step 4.
   `assistant_thread` /App Home equivalents are Slack-only concepts
-  (`chat/events.ts`) — no action needed, they simply don't fire for
+  (`chat/events.ts`), no action needed, they simply don't fire for
   Discord/Telegram since `onAssistantThreadStarted`/`onAppHomeOpened` are
   Slack Assistant-API-specific Chat SDK events.
 - **Scoping**: this plan intentionally does not add Teams, Google Chat, or
   any vendor-official adapter (AgentPhone, Lark, etc.) even though the
-  catalog lists them — the brief's stated first priority is Discord and
+  catalog lists them, the brief's stated first priority is Discord and
   Telegram specifically. The registration pattern established here
   (Design's "one map, one line per platform") is what makes adding a third
   platform later cheap, so no extra abstraction is needed to "prepare" for
@@ -600,8 +599,7 @@ to their four call sites, all within this repo, all updated in step 5.
 
 ## Effort & priority
 
-**Size: M.** The registration itself (Implementation steps 1-4) is small —
-an afternoon, mostly dependency install and env var plumbing, since
+**Size: M.** The registration itself (Implementation steps 1-4) is small, an afternoon, mostly dependency install and env var plumbing, since
 `channels.adapters` already supports this shape with zero Mastra-side
 changes needed. The bulk of the effort is the Slack-only-coupling cleanup
 (steps 5-9), which is real but bounded: five files with hardcoded `slack:`

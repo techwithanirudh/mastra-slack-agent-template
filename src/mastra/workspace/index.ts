@@ -13,7 +13,7 @@ import { channelContext } from '../lib/context';
 import { E2BFilesystem } from './filesystem';
 import { createSandbox } from './sandbox';
 
-export async function resolveE2BSandbox(
+export async function getSandbox(
   requestContext: RequestContext
 ): Promise<E2BSandbox | undefined> {
   const sandbox = await workspace.resolveSandbox({ requestContext });
@@ -31,7 +31,7 @@ export const workspace: Workspace = new Workspace({
     return createSandbox(threadId);
   },
   filesystem: async ({ requestContext }) => {
-    const sandbox = await resolveE2BSandbox(requestContext);
+    const sandbox = await getSandbox(requestContext);
     if (!sandbox) {
       throw new Error('No E2B sandbox available for filesystem.');
     }
