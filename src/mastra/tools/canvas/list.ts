@@ -24,28 +24,59 @@ const canvasFile = z
 export const listCanvasesTool = createTool({
   id: 'list_canvases',
   description:
-    'List Slack canvases (standalone or channel canvases). Defaults to the current channel; omit channelId for a workspace-wide list.',
-  inputSchema: z.object({
-    channelId: z
-      .string()
-      .optional()
-      .describe(
-        'Current channel id (slack:C...) to filter by; defaults to current.'
-      ),
-  }),
-  execute: async ({ channelId }, context) => {
-    const ctx = channelContext(context?.requestContext);
-    const id = channelId ?? ctx.channelId;
+    'List Slack canvases visible to the bot. Defaults to the current channel; use workspace scope to include standalone canvases and canvases from other accessible channels. Results are paginated.',
+  inputSchema: z
+    .object({
+      scope: z
+        .enum(['channel', 'workspace'])
+        .default('channel')
+        .describe(
+          'Use channel for the current or specified channel, or workspace for all accessible canvases.'
+        ),
+      channelId: z
+        .string()
+        .optional()
+        .describe(
+          'Channel id (slack:C...) to use instead of the current channel. Only valid with channel scope.'
+        ),
+      limit: z.coerce.number().int().min(1).max(100).default(20),
+      page: z.coerce.number().int().min(1).default(1),
+    })
+    .refine(({ scope, channelId }) => !(scope === 'workspace' && channelId), {
+      message: 'channelId cannot be used with workspace scope.',
+      path: ['channelId'],
+    }),
+  execute: async ({ scope, channelId, limit, page }, context) => {
+    const id =
+      scope === 'workspace'
+        ? undefined
+        : (channelId ?? channelContext(context?.requestContext).channelId);
+    if (scope === 'channel' && !id) {
+      throw new Error('No channel to list canvases from.');
+    }
+
     const response = await slack.webClient.files.list({
       types: 'canvas',
+      count: limit,
+      page,
       ...(id ? { channel: rawId(id) } : {}),
     });
     const canvases = (response.files ?? []).map((f) => canvasFile.parse(f));
+    const nextPage =
+      response.paging?.page &&
+      response.paging.pages &&
+      response.paging.page < response.paging.pages
+        ? response.paging.page + 1
+        : undefined;
+
     return {
       success: true,
+      scope,
+      channelId: id,
       canvases,
       count: canvases.length,
-      message: `Found ${canvases.length} canvas${canvases.length === 1 ? '' : 'es'}${id ? ` in ${id}` : ''}.`,
+      nextPage,
+      message: `Found ${canvases.length} canvas${canvases.length === 1 ? '' : 'es'}${id ? ` in ${id}` : ' across the workspace'}.`,
     };
   },
 });

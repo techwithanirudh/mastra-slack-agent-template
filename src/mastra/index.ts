@@ -26,6 +26,14 @@ process.on('uncaughtException', (error: Error) => {
 
 export const mastra = new Mastra({
   agents: { orchestrator, summarizer, research, explore, execute },
+  schedules: {
+    prepare: async ({ mastra: runtime, schedule }) => {
+      const current = await runtime.schedules.get(schedule.id);
+      if (current?.metadata?.kind === 'wait') {
+        await runtime.schedules.delete(schedule.id);
+      }
+    },
+  },
   storage: new MastraCompositeStore({
     id: 'composite-storage',
     default: new PostgresStore({
