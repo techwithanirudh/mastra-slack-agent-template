@@ -63,7 +63,12 @@ async function main(): Promise<void> {
       .setUser('user')
       .setWorkdir(config.workdir),
     config.template,
-    { apiKey: env.E2B_API_KEY, onBuildLogs: defaultBuildLogger() }
+    {
+      apiKey: env.E2B_API_KEY,
+      cpuCount: 2,
+      memoryMB: 1024,
+      onBuildLogs: defaultBuildLogger(),
+    }
   );
 
   console.log(`[sandbox] built e2b template: ${build.templateId}`);

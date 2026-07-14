@@ -112,6 +112,16 @@ instead of a manual diff every time.
   model is tried first (or the non-vision one is skipped) whenever the input
   includes an image, this retry churn is also implicated in the streaming
   timeout bug above, since it burned real silent time with zero output.
+- [ ] Add a sticky fallback winner cache for model routing. Mastra already has
+  sequential model fallback with per-model retries, but each new request still
+  starts from the front of the chain. Remember "this provider route/model works"
+  for about 30 minutes per model role and capability shape (for example text
+  only vs image input), then prefer that working entry first on later requests
+  instead of re-burning time on earlier entries that are likely still bad. A
+  successful call refreshes the 30-minute TTL; a failure from the cached winner
+  drops it and falls back to the normal chain. Confirm this can be implemented
+  without fighting Mastra's fallback preparation path or increasing file
+  descriptor/resource pressure.
 - [ ] Rebuild `read_canvas` to return real Canvas-flavored markdown plus a
   `section_id_mapping`, matching what other Slack canvas tools (confirmed via
   Anthropic's own Slack MCP connector, `slack_read_canvas`) return, instead of
@@ -153,6 +163,47 @@ instead of a manual diff every time.
   needs a durable scheduling mechanism (e.g. route through the same
   `create_scheduled_task` cron infrastructure, one-shot) instead of
   `setTimeout`.
+- [ ] Tool approval clicks silently no-op with `No pending approval found for
+  toolCallId=...` in the logs, reproduced live against `post_message` (the
+  only tool left with `requireApproval: true` after the approval-scope
+  cleanup below). Root cause traced in `@mastra/core/dist/chunk-OE4IEL7C.js`:
+  approve/deny lookups check an in-memory `pendingApprovalCards` Map first
+  (line 11211), then fall back to querying storage for `pendingToolApprovals`
+  metadata written onto the last assistant message (`addToolMetadata`, line
+  28297). That metadata write only lands in the in-memory `messageList`
+  immediately; actual DB persistence goes through an async
+  `saveQueueManager` flush, not synchronously. If the run is interrupted
+  between "card posted" and "flush completes", both lookups come up empty on
+  click. Two concrete triggers reproduced back to back in one session: (1) an
+  OpenRouter 429 (see the provider-pinning bug below) erroring the run out
+  before the flush landed, and (2) `mastra dev`'s file-watch hot-reload
+  (triggered by normal source edits) wiping the in-memory Map mid-approval.
+  Fix needs either making the metadata write durable before the approval
+  card is even shown, or a documented "approvals don't survive a reload/error
+  window" caveat; not yet decided which.
+- [ ] E2B sandbox spec was implicit (no `cpuCount`/`memoryMB` passed to
+  `Template.build`), and a live sandbox was caught OOM-thrashing under that
+  default: `next dev` (Turbopack) + `agent-browser`'s Chromium + bun all
+  running together made even `echo hello` time out via `execute_command`,
+  consistent with memory starvation rather than a hung process.
+  `build-template.ts` now explicitly requests `cpuCount: 2, memoryMB: 1024`
+  (see Recently completed) instead of relying on whatever default applied.
+  Needs `bun run build:template` to actually take effect, not run this
+  session per the "ask before" policy on external side effects. Also note:
+  `createSandbox` derives a stable per-thread sandbox id from the thread id,
+  so rebuilding the template alone won't reach an already-running/stuck
+  sandbox for a thread that's currently wedged; that specific sandbox needs
+  to be killed separately for a thread to get the new spec.
+- [ ] `providers.ts`'s `openrouterOptions = { provider: { only: ['DigitalOcean']
+  } }` pins every model role (orchestrator, summarizer, scout, explorer,
+  executor) to a single upstream OpenRouter provider slice, removing
+  OpenRouter's normal cross-provider failover. Plausibly increases 429
+  frequency: reproduced live, the orchestrator's primary model
+  (`openrouter/minimax/minimax-m3`) hit a 429 from openrouter.ai mid-turn.
+  Unknown whether the DigitalOcean pin is a deliberate constraint (data
+  residency?) or leftover from testing; needs a decision before loosening it.
+  Related to the sticky-fallback-cache item above, since narrower provider
+  choice means the fallback chain gets exercised more often.
 
 ## Roadmap
 
@@ -161,6 +212,17 @@ instead of a manual diff every time.
 - [ ] MCP support: firm up the built-in MCP servers, then let end users add
   their own MCPs.
 - [ ] MCP emoji proxy.
+- [ ] Slack Block Kit support. `post_message` (`tools/slack/post-message.ts`)
+  and canvas creation currently only accept a markdown string, converted via
+  `SlackFormatConverter().toSlackPayload`. Add a real Block Kit option
+  (sections, buttons/actions, images, context blocks, dividers) instead of
+  markdown being the only output shape. Not yet researched: whether to accept
+  raw `Block[]` (`@slack/types`) directly, which risks the model producing
+  malformed block JSON, or a constrained builder-style schema that's
+  friendlier for an LLM to fill in correctly. Also needs to be reconciled
+  with the existing tool-call "card" rendering (`toolDisplay: 'cards'`, see
+  the streaming bug above) so the two don't fight over how rich content shows
+  up in a thread.
 - [ ] Custom instructions: persistent per-user instructions for persona, tone,
   style, and how to address them.
 - [ ] Restrict `edit_message` and `delete_message` to messages the bot itself
@@ -403,9 +465,38 @@ for now per decision, not lost.
 - [ ] Test a canvas edit/create that includes a user or channel mention using
   the new `![](@USER_ID)`/`![](#CHANNEL_ID)` syntax, confirm it renders as a
   real clickable mention in the canvas, not literal text.
+- [ ] Rebuild the E2B template (`bun run build:template`) after the
+  `cpuCount: 2, memoryMB: 1024` change and confirm new sandboxes actually get
+  the new spec, not just that the build succeeds. Existing per-thread
+  sandboxes won't pick it up until recreated (see Bugs).
+- [ ] Reproduce the "No pending approval found" tool-approval bug on purpose
+  (trigger `post_message`'s approval card, then either force a model 429 or
+  save-edit a watched source file to trigger a `mastra dev` reload before
+  clicking Approve) to confirm the root cause and validate whatever fix lands.
+- [ ] Confirm `edit_canvas` and `delete_scheduled_task` still behave
+  correctly now that `requireApproval` is removed from them (they execute
+  immediately, no approval card); only `post_message` should still show one.
 
 ## Recently completed
 
+- Removed `requireApproval` from `delete_canvas`, `edit_canvas`, and
+  `delete_scheduled_task`; only `post_message` requires approval now.
+- Removed the `delete_canvas` tool entirely (file, `canvasTools` export, and
+  its `prompts/tools.ts` mention); canvases are not deletable through the
+  agent anymore.
+- Gave `research` direct, always-on access to `list_canvases`, `read_canvas`,
+  and `lookup_canvas_sections` (previously only reachable indirectly by
+  guessing to call `search_tools`), and updated its instructions to mention
+  canvases as a research source while keeping it read-only (no edit, create,
+  or delete).
+- Added a clearer explanation of what a Slack canvas actually is (a
+  persistent per-channel/standalone reference doc, not a one-off message) to
+  `prompts/tools.ts`'s offloaded tool notes, so agents know when to reach for
+  one instead of only learning the mechanics of each canvas tool.
+- `build-template.ts` now explicitly requests `cpuCount: 2, memoryMB: 1024`
+  for the E2B template instead of relying on an implicit default; needed
+  after a live sandbox was caught OOM-thrashing under whatever the previous
+  default was (see Bugs and Verify for the rebuild step still outstanding).
 - `edit_canvas` now catches `restricted_action` and throws a clear message
   explaining the canvas's own sharing settings only grant read access, not
   write, and who needs to grant write access, instead of surfacing a raw

@@ -2,7 +2,6 @@ import { Agent } from '@mastra/core/agent';
 import {
   ProviderHistoryCompat,
   TokenLimiterProcessor,
-  ToolSearchProcessor,
 } from '@mastra/core/processors';
 import { InMemoryStore } from '@mastra/core/storage';
 import { Memory } from '@mastra/memory';
@@ -12,7 +11,10 @@ import { stepCountIs } from '../lib/tools';
 import { sandbox } from '../processors/sandbox';
 import { relocateToolResultImages } from '../processors/tool-media';
 import { explorer } from '../providers';
-import { baseTools, deferredTools } from '../tools/base';
+import { fetchUrlTool } from '../tools/fetch-url';
+import { grepTool } from '../tools/grep';
+import { searchWebTool } from '../tools/search-web';
+import { slackTools } from '../tools/slack';
 import { workspace } from '../workspace';
 
 export const exploreAgent = new Agent({
@@ -26,16 +28,17 @@ export const exploreAgent = new Agent({
   hooks: logTools,
   memory: new Memory({ storage: new InMemoryStore() }),
   workspace,
-  tools: baseTools,
+  tools: {
+    grep: grepTool,
+    search_web: searchWebTool,
+    fetch_url: fetchUrlTool,
+    search_slack: slackTools.search_slack,
+    read_conversation_history: slackTools.read_conversation_history,
+    list_threads: slackTools.list_threads,
+    get_user: slackTools.get_user,
+    get_channel_info: slackTools.get_channel_info,
+  },
   inputProcessors: [
-    new ToolSearchProcessor({
-      tools: deferredTools,
-      storage: 'context',
-      search: {
-        topK: 4,
-        autoLoad: true,
-      },
-    }),
     new TokenLimiterProcessor({
       limit: config.maxTokens.input,
       trimMode: 'contiguous',
@@ -44,12 +47,11 @@ export const exploreAgent = new Agent({
       additionalRules: [relocateToolResultImages],
     }),
   ],
-  defaultOptions: {
+  defaultOptions: { 
     activeTools: [
       'skill',
       'skill_search',
       'skill_read',
-      'search_tools',
       'read_file',
       'list_files',
       'grep',

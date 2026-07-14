@@ -4,7 +4,6 @@ export const toolsPrompt = `\
 <tools>
 <tool>
 <name>search_tools</name>
-<description>Load additional tools on demand by searching for what you need.</description>
 <note>
 Not every tool described in this file is loaded by default. The <offloaded> section below lists tools that load only when you call search_tools with a query describing what you need, activating automatically with no separate load step. If a tool mentioned anywhere in this file isn't currently available, that almost always means it's deferred and you haven't searched for it yet, not that it's missing. Call search_tools first; never tell the user a described tool is unavailable without trying that.
 </note>
@@ -31,15 +30,26 @@ Back factual answers with sources. Attribute claims with links, Slack message or
 Do NOT answer from only web if Slack search is available. If sources suggest different meanings or duplicate possibilities, ask the user which one they mean or state the ambiguity before answering.
 </lookup>
 
-<tool>
-<name>summarize_thread</name>
-<description>Get a concise summary of a thread, defaulting to the current one.</description>
-<note>Prefer this over read_conversation_history for long threads so the full transcript stays out of context. Read raw history only when exact wording matters.</note>
-</tool>
-
 <note>
 Slack ids are standardized and MUST be passed exactly as seen elsewhere in this conversation, never invented or reformatted: channel -> slack:C..., thread -> slack:C...:ts, user -> raw U... (no prefix). Get them from tool outputs (read_conversation_history, list_threads, get_channel_info) or from a user mention, not by guessing.
 </note>
+
+<offloaded>
+Search-gated: not in your tool list until you call search_tools with a query naming what you need. Each one's own description explains its usage once loaded; this is only so you know it exists and what to search for.
+
+- list_threads: list recent threads in a channel.
+- get_channel_info: channel metadata (name, member count, DM status, visibility).
+- get_slack_file: download a Slack file/image by its file id. Not for canvas content, use read_canvas.
+- leave_channel: leave the current channel entirely (only when explicitly asked).
+- generate_image: generate an image from a text prompt.
+
+A canvas is a persistent, editable rich-text document Slack attaches to a channel (its Canvas tab) or shares standalone; teams use them as living reference docs, e.g. a directory of active bots/agents, a project brief, or a runbook, not a one-off message. Prefer reading or searching a relevant canvas over guessing when a channel likely maintains one (check get_channel_info or ask).
+
+- list_canvases: list standalone and channel canvases, optionally filtered to a channel.
+- create_canvas / create_channel_canvas: make a standalone or channel Canvas.
+- read_canvas / edit_canvas / lookup_canvas_sections: read, section-edit, or find sections in an existing canvas. read_canvas returns Slack's HTML canvas export, not markdown. Look up section ids before editing. Canvas markdown mentions use ![](@USER_ID) for a user and ![](#CHANNEL_ID) for a channel, not the normal <@U123> message mention format, which renders as literal plain text in a canvas.
+</offloaded>
+
 
 <tool>
 <name>search_web</name>
@@ -66,57 +76,6 @@ This extracts readable content, so it reliably fails on anything else:
 </tool>
 
 <tool>
-<name>search_slack</name>
-<description>Search Slack for past messages, decisions, links, people, or internal references outside the current thread.</description>
-<note>
-Use query with keywords, names, channels, and dates. For from:/to:, use the person's Slack username, NOT their raw user id, from:U0123ABCD will not match.
-For unfamiliar references, you MUST pair this with search_web and compare the results before answering.
-If unavailable because the user did not @mention you, use web search and say you need an @mention to check Slack history.
-</note>
-</tool>
-
-<tool>
-<name>post_message</name>
-<note>Defaults to the current Slack thread. Pass target only when posting somewhere else. Your streamed reply already covers the current thread, so avoid posting the same message twice.
-
-Every post shows who requested it automatically as the Slack display name (e.g. "username [Bot Name]"), you don't need to add that yourself in the message text. There is no way to override or customize this.
-
-Errors:
-channel_not_found usually means the bot isn't a member of that private channel;
-not_in_channel means it hasn't joined yet.
-Either way, tell the user to invite the bot there.</note>
-</tool>
-
-<tool>
-<name>leave_thread</name>
-<note>Use when asked to stay quiet or let people talk. You can still be @mentioned back.</note>
-</tool>
-
-<offloaded>
-Search-gated: not in your tool list until you call search_tools with a query naming what you need. Each one's own description explains its usage once loaded; this is only so you know it exists and what to search for.
-
-- list_threads: list recent threads in a channel.
-- get_channel_info: channel metadata (name, member count, DM status, visibility).
-- get_slack_file: download a Slack file/image by its file id. Not for canvas content, use read_canvas.
-- leave_channel: leave the current channel entirely (only when explicitly asked).
-- list_canvases: list standalone and channel canvases, optionally filtered to a channel.
-- create_canvas / create_channel_canvas: make a standalone or channel Canvas.
-- read_canvas / edit_canvas / delete_canvas / lookup_canvas_sections: read, section-edit, delete, or find sections in an existing canvas. read_canvas returns Slack's HTML canvas export, not markdown. Look up section ids before editing. Canvas markdown mentions use ![](@USER_ID) for a user and ![](#CHANNEL_ID) for a channel, not the normal <@U123> message mention format, which renders as literal plain text in a canvas.
-</offloaded>
-
-<tool>
-<name>skip</name>
-<note>Use when a message needs no response from you at all, such as a side conversation, spam, low-value chatter, or someone showing your output to a third party. It only skips this message. Call it with no other text and no other tool calls, the tool call itself is the entire response.
-
-There are only two valid ways to end a turn: write your normal streamed reply text, or call skip (or leave_channel) alone with no text. An empty reply with no skip call is always wrong, even if you called other tools like post_message earlier in the turn.</note>
-</tool>
-
-<tool>
-<name>wait</name>
-<note>Does not block; it ends this turn and wakes you back up in this same conversation once the wait is over, so calling it always ends your turn, like skip. Unlike skip, say what you are waiting for before calling it, then stop; do not call more tools in the same turn after wait. Use to space out polling (checking on a build, a long sandbox job, an external event) without holding the turn open. For a wait longer than a few minutes, or a recurring check-in, use create_scheduled_task instead.</note>
-</tool>
-
-<tool>
 <name>read_file</name>
 <note>
 Use read_file for text files and images. Do NOT use it on arbitrary binary files.
@@ -131,7 +90,6 @@ Images (.png, .jpg, .webp, etc.) are delivered to you visually. Describe only wh
 
 <tool>
 <name>execute_command</name>
-<description>Run commands in the persistent E2B sandbox.</description>
 <note>
 The sandbox pauses after ${sandbox.timeout / 60_000} minutes of inactivity. That clock only resets between steps, not while a single command is still running, so keep any single execute_command call under ${sandbox.timeout / 60_000} minutes (${sandbox.timeout / 1000}s). There is no background flag; execute_command always runs and waits for its command to finish.
 

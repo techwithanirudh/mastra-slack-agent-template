@@ -12,6 +12,7 @@ import { sandbox } from '../processors/sandbox';
 import { relocateToolResultImages } from '../processors/tool-media';
 import { executor } from '../providers';
 import { baseTools } from '../tools/base';
+import { generateImageTool } from '../tools/generate-image';
 import { workspace } from '../workspace';
 
 export const executeAgent = new Agent({
@@ -25,7 +26,7 @@ export const executeAgent = new Agent({
   hooks: logTools,
   memory: new Memory({ storage: new InMemoryStore() }),
   workspace,
-  tools: baseTools,
+  tools: { ...baseTools, generate_image: generateImageTool },
   inputProcessors: [
     new TokenLimiterProcessor({
       limit: config.maxTokens.input,
@@ -46,7 +47,6 @@ export const executeAgent = new Agent({
       'list_files',
       'delete_file',
       'file_stat',
-      'ast_edit',
       'grep',
       'execute_command',
       'get_process_output',

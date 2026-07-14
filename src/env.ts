@@ -16,6 +16,7 @@ export const env = createEnv({
     OPENCODE_API_KEY: z.string().min(1).optional(),
     INFERENCE_API_KEY: z.string().min(1).optional(),
     INFERENCE_BASE_URL: z.url().optional(),
+    HACKCLUB_API_KEY: z.string().min(1).optional(),
 
     DATABASE_URL: z.url(),
 

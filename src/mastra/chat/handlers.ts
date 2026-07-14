@@ -51,14 +51,15 @@ async function captureSearchToken(thread: Thread, raw: unknown): Promise<void> {
   }
 }
 
-function shouldIgnore(message: Message): boolean {
-  if (
+function isFromBot(message: Message): boolean {
+  return (
     message.author.isBot === true ||
     message.author.userId === 'USLACKBOT' ||
     message.author.isMe === true
-  ) {
-    return true;
-  }
+  );
+}
+
+function comment(message: Message): boolean {
   for (const line of rawText(message).split('\n')) {
     if (withoutLeadingMentions(line).trimStart().startsWith('##')) {
       return true;
@@ -95,7 +96,7 @@ export async function onMention(
   defaultHandler: DefaultHandler
 ): Promise<void> {
   await captureSearchToken(thread, message.raw);
-  if (shouldIgnore(message)) {
+  if (isFromBot(message)) {
     return;
   }
   if (slack.decodeThreadId(message.threadId).threadTs === message.id) {
@@ -113,7 +114,7 @@ export async function onSubscribedMessage(
   defaultHandler: DefaultHandler
 ): Promise<void> {
   await captureSearchToken(thread, message.raw);
-  if (shouldIgnore(message)) {
+  if (isFromBot(message) || comment(message)) {
     return;
   }
   const state = await threadState(thread);
@@ -137,7 +138,7 @@ export async function onDirectMessage(
   defaultHandler: DefaultHandler
 ): Promise<void> {
   await captureSearchToken(thread, message.raw);
-  if (shouldIgnore(message)) {
+  if (isFromBot(message)) {
     return;
   }
   if (await handleCommand(thread, message)) {
