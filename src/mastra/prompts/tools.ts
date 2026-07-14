@@ -38,7 +38,6 @@ Slack ids are standardized and MUST be passed exactly as seen elsewhere in this 
 Search-gated: not in your tool list until you call search_tools with a query naming what you need. Each one's own description explains its usage once loaded; this is only so you know it exists and what to search for.
 
 - list_threads: list recent threads in a channel.
-- get_channel_info: channel metadata (name, member count, DM status, visibility).
 - get_slack_file: download a Slack file/image by its file id. Not for canvas content, use read_canvas.
 - leave_channel: leave the current channel entirely (only when explicitly asked).
 - generate_image: generate an image from a text prompt.

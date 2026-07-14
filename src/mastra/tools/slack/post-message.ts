@@ -6,6 +6,7 @@ import { chat } from '../../chat/instance';
 import { resolveTarget, targetSchema } from '../../chat/target';
 import { channelContext } from '../../lib/context';
 import { rawId } from '../../lib/ids';
+import { input, summary, toolOutput } from '../../types/tools/index';
 import { joinChannel } from './utils';
 
 const markdownConverter = new SlackFormatConverter();
@@ -34,12 +35,22 @@ Defaults to the current thread; pass target only when posting somewhere else. Yo
 Every post automatically shows who requested it as the Slack display name, do not add that yourself in the message text; there is no way to override or customize this.
 
 Errors: channel_not_found usually means the bot isn't a member of that private channel; not_in_channel means it hasn't joined yet. Either way, tell the user to invite the bot there.`,
-  inputSchema: z.object({
+  inputSchema: input({
     target: targetSchema
       .optional()
       .describe('Optional destination. Defaults to the current thread.'),
     message: z.string().min(1).describe('Markdown message body.'),
   }),
+  outputSchema: toolOutput({
+    messageId: z.string(),
+    threadId: z.string().optional(),
+  }),
+  transform: {
+    display: {
+      output: ({ output }) =>
+        summary(`Posted message ${output?.messageId ?? ''}`),
+    },
+  },
   requireApproval: true,
   execute: async ({ target, message }, context) => {
     const ctx = channelContext(context?.requestContext);
@@ -70,12 +81,10 @@ Errors: channel_not_found usually means the bot isn't a member of that private c
         ...markdownConverter.toSlackPayload({ markdown: message }),
         username,
       });
-      return {
-        success: true,
-        messageId: sent.ts,
-        threadId: threadTs,
-        message: `Posted to ${resolved.type} ${resolved.id} as "${username}".`,
-      };
+      if (!sent.ts) {
+        throw new Error('Slack posted the message without returning its id.');
+      }
+      return { messageId: sent.ts, threadId: threadTs };
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       if (reason.includes('channel_not_found')) {

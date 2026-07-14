@@ -2,6 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { generateImage } from 'ai';
 import { z } from 'zod';
 import { images } from '../providers';
+import { input, summary, toolOutput } from '../types/tools/index';
 import { getSandbox } from '../workspace';
 import { p } from '../workspace/path';
 
@@ -9,7 +10,7 @@ export const generateImageTool = createTool({
   id: 'generate_image',
   description:
     'Generate one or more AI images from an explicit image-creation request and write them into the sandbox downloads/ directory. Use upload_file afterward to send them to Slack (defaults to the current thread; pass target for elsewhere) or process them first with other sandbox tools.',
-  inputSchema: z.object({
+  inputSchema: input({
     prompt: z
       .string()
       .min(1)
@@ -29,6 +30,13 @@ export const generateImageTool = createTool({
       .optional()
       .describe('Optional aspect ratio like 16:9 or 1:1.'),
   }),
+  outputSchema: toolOutput({ prompt: z.string(), paths: z.array(z.string()) }),
+  transform: {
+    display: {
+      output: ({ output }) =>
+        summary(`Generated ${output?.paths.length ?? 0} images`),
+    },
+  },
   execute: async ({ prompt, n, aspectRatio }, context) => {
     if (!context?.requestContext) {
       throw new Error('No workspace context.');
@@ -44,8 +52,6 @@ export const generateImageTool = createTool({
       n,
       ...(aspectRatio ? { aspectRatio } : {}),
     });
-    const total = result.images.length;
-
     await sandbox.ensureRunning();
     const dir = p('downloads');
     await sandbox.retryOnDead(() => sandbox.e2b.files.makeDir(dir));
@@ -75,10 +81,8 @@ export const generateImageTool = createTool({
     );
 
     return {
-      success: true,
       prompt,
       paths,
-      message: `Generated ${total} image${total === 1 ? '' : 's'} into the sandbox: ${paths.join(', ')}. Use upload_file to send them to Slack.`,
     };
   },
 });

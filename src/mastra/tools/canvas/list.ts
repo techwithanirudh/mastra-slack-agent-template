@@ -3,10 +3,11 @@ import { z } from 'zod';
 import { slack } from '../../chat/client';
 import { channelContext } from '../../lib/context';
 import { rawId } from '../../lib/ids';
+import { input, summary, toolOutput } from '../../types/tools/index';
 
 const canvasFile = z
   .looseObject({
-    id: z.string().optional(),
+    id: z.string(),
     title: z.string().optional(),
     name: z.string().optional(),
     created: z.number().optional(),
@@ -25,27 +26,45 @@ export const listCanvasesTool = createTool({
   id: 'list_canvases',
   description:
     'List Slack canvases visible to the bot. Defaults to the current channel; use workspace scope to include standalone canvases and canvases from other accessible channels. Results are paginated.',
-  inputSchema: z
-    .object({
-      scope: z
-        .enum(['channel', 'workspace'])
-        .default('channel')
-        .describe(
-          'Use channel for the current or specified channel, or workspace for all accessible canvases.'
-        ),
-      channelId: z
-        .string()
-        .optional()
-        .describe(
-          'Channel id (slack:C...) to use instead of the current channel. Only valid with channel scope.'
-        ),
-      limit: z.coerce.number().int().min(1).max(100).default(20),
-      page: z.coerce.number().int().min(1).default(1),
-    })
-    .refine(({ scope, channelId }) => !(scope === 'workspace' && channelId), {
-      message: 'channelId cannot be used with workspace scope.',
-      path: ['channelId'],
-    }),
+  inputSchema: input({
+    scope: z
+      .enum(['channel', 'workspace'])
+      .default('channel')
+      .describe(
+        'Use channel for the current or specified channel, or workspace for all accessible canvases.'
+      ),
+    channelId: z
+      .string()
+      .optional()
+      .describe(
+        'Channel id (slack:C...) to use instead of the current channel. Only valid with channel scope.'
+      ),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    page: z.coerce.number().int().min(1).default(1),
+  }).refine(({ scope, channelId }) => !(scope === 'workspace' && channelId), {
+    message: 'channelId cannot be used with workspace scope.',
+    path: ['channelId'],
+  }),
+  outputSchema: toolOutput({
+    scope: z.enum(['channel', 'workspace']),
+    channelId: z.string().optional(),
+    canvases: z.array(
+      z.strictObject({
+        canvasId: z.string(),
+        title: z.string().optional(),
+        created: z.number().optional(),
+        updated: z.number().optional(),
+        permalink: z.string().optional(),
+      })
+    ),
+    nextPage: z.number().optional(),
+  }),
+  transform: {
+    display: {
+      output: ({ output }) =>
+        summary(`Found ${output?.canvases.length ?? 0} canvases`),
+    },
+  },
   execute: async ({ scope, channelId, limit, page }, context) => {
     const id =
       scope === 'workspace'
@@ -70,13 +89,10 @@ export const listCanvasesTool = createTool({
         : undefined;
 
     return {
-      success: true,
       scope,
       channelId: id,
       canvases,
-      count: canvases.length,
       nextPage,
-      message: `Found ${canvases.length} canvas${canvases.length === 1 ? '' : 'es'}${id ? ` in ${id}` : ' across the workspace'}.`,
     };
   },
 });

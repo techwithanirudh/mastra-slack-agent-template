@@ -2,13 +2,14 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { agent as agentConfig } from '../config';
 import { taskContext } from '../lib/memory';
+import { input, summary, toolOutput } from '../types/tools/index';
 import { isAgentSchedule } from './scheduled-tasks/queries';
 
 export const waitTool = createTool({
   id: 'wait',
   description:
     'Pause the conversation and automatically resume it later, without blocking. Use to space out polling or give a background job or external event time to progress. Call this last, say what you are waiting for, then stop; you will be woken up automatically when the wait is over. Calling it always ends your turn, the same as skip. Max 300 seconds; for a longer or recurring wait, use create_scheduled_task instead.',
-  inputSchema: z.object({
+  inputSchema: input({
     seconds: z
       .number()
       .int()
@@ -20,6 +21,13 @@ export const waitTool = createTool({
       .min(1)
       .describe('What you are waiting for, and what to do once it resumes.'),
   }),
+  outputSchema: toolOutput({ seconds: z.number() }),
+  transform: {
+    display: {
+      output: ({ output }) =>
+        summary(`Waiting ${output?.seconds ?? 0} seconds`),
+    },
+  },
   execute: async ({ seconds, reason }, context) => {
     const schedules = context.mastra?.schedules;
     if (!schedules) {
@@ -66,9 +74,7 @@ export const waitTool = createTool({
     });
 
     return {
-      success: true,
       seconds,
-      message: `Waiting ${seconds}s for ${reason}. This turn is ending now; I'll continue automatically once the wait is over.`,
     };
   },
 });

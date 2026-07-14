@@ -21,7 +21,8 @@
     "postinstall": "bun run scripts/verify-patches.ts"
   },
   "patchedDependencies": {
-    "@mastra/core@1.50.1": "patches/@mastra+core@1.50.1.patch"
+    "@mastra/core@1.50.1": "patches/@mastra+core@1.50.1.patch",
+    "@mastra/e2b@0.6.0-alpha.0": "patches/@mastra+e2b@0.6.0-alpha.0.patch"
   },
   "overrides": {
     "chat": "^4.32.0"
@@ -33,7 +34,7 @@
     "@chat-adapter/state-pg": "^4.32.0",
     "@mastra/core": "^1.50.1",
     "@mastra/duckdb": "^1.5.1",
-    "@mastra/e2b": "0.5.1",
+    "@mastra/e2b": "0.6.0-alpha.0",
     "@mastra/loggers": "1.2.0",
     "@mastra/mcp": "^1.13.1",
     "@mastra/memory": "^1.22.2",

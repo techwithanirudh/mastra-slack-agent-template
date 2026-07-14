@@ -1,4 +1,4 @@
-import type { CoreSystemMessage, SystemMessage } from '@mastra/core/llm';
+import type { CoreSystemMessage } from '@mastra/core/llm';
 import type { RequestContext } from '@mastra/core/request-context';
 import { contextPrompt } from './context';
 import { corePrompt } from './core';
@@ -6,7 +6,9 @@ import { personalityPrompt } from './personality';
 import { slackPrompt } from './slack';
 import { toolsPrompt } from './tools';
 
-export function instructions(requestContext: RequestContext): SystemMessage {
+export function instructions(
+  requestContext: RequestContext
+): CoreSystemMessage[] {
   const context = contextPrompt(requestContext);
   const messages: CoreSystemMessage[] = [
     {

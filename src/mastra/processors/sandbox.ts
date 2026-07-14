@@ -7,6 +7,7 @@ import { logger } from '../lib/logger';
 import { getSandbox } from '../workspace';
 
 const sandboxTools = new Set([
+  'slack',
   'execute_command',
   'get_process_output',
   'kill_process',

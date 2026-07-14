@@ -13,6 +13,9 @@ export const env = createEnv({
 
     OPENROUTER_API_KEY: z.string().min(1),
     OPENROUTER_BASE_URL: z.url().default('https://openrouter.ai/api/v1'),
+    HACKCLUB_API_KEY: z.string().min(1).optional(),
+    INFERENCE_API_KEY: z.string().min(1).optional(),
+    INFERENCE_BASE_URL: z.url().optional(),
 
     DATABASE_URL: z.url(),
 

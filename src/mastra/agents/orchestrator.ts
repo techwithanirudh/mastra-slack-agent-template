@@ -30,6 +30,7 @@ import {
   summarizer as summarizerModel,
 } from '../providers';
 import { baseTools, deferredTools } from '../tools/base';
+import { slackCodeMode } from '../tools/code-mode/slack';
 import { workspace } from '../workspace';
 import { executeAgent } from './execute';
 import { exploreAgent } from './explore';
@@ -38,7 +39,10 @@ import { researchAgent } from './research';
 const orchestrator = new Agent({
   id: config.id,
   name: 'Orchestrator',
-  instructions: ({ requestContext }) => instructions(requestContext),
+  instructions: ({ requestContext }) => [
+    ...instructions(requestContext),
+    { role: 'system', content: slackCodeMode.instructions },
+  ],
   model: orchestratorModel,
   hooks: logTools,
   defaultOptions: {

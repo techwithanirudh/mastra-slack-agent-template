@@ -4,13 +4,14 @@ import { summarizer } from '../../agents/summarizer';
 import { slack } from '../../chat/client';
 import { channelContext } from '../../lib/context';
 import { chatChannelId } from '../../lib/ids';
+import { input, summary, toolOutput } from '../../types/tools/index';
 import { joinChannel } from './utils';
 
 export const summarizeThreadTool = createTool({
   id: 'summarize_thread',
   description:
     'Summarize a conversation thread, defaulting to the current thread, without returning the full transcript to the main model context. Prefer this over read_conversation_history for long threads; read raw history only when exact wording matters.',
-  inputSchema: z.object({
+  inputSchema: input({
     threadId: z
       .string()
       .optional()
@@ -22,6 +23,16 @@ export const summarizeThreadTool = createTool({
       .optional()
       .describe('Optional focus or format for the summary.'),
   }),
+  outputSchema: toolOutput({
+    messageCount: z.number().int().min(1),
+    summary: z.string(),
+  }),
+  transform: {
+    display: {
+      output: ({ output }) =>
+        summary(`Summarized ${output?.messageCount ?? 0} messages`),
+    },
+  },
   execute: async ({ threadId, instructions }, context) => {
     const ctx = channelContext(context?.requestContext);
     const target = threadId ?? ctx.threadId;
@@ -37,7 +48,7 @@ export const summarizeThreadTool = createTool({
       direction: 'backward',
     });
     if (result.messages.length === 0) {
-      return { success: false, message: 'No messages found in the thread.' };
+      throw new Error('No messages found in the thread.');
     }
 
     const lines = result.messages.map((message) => {
@@ -50,9 +61,8 @@ export const summarizeThreadTool = createTool({
     const { text } = await summarizer.generate(prompt);
 
     return {
-      success: true,
       messageCount: result.messages.length,
-      message: text,
+      summary: text,
     };
   },
 });

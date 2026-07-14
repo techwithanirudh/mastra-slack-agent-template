@@ -3,13 +3,14 @@ import { z } from 'zod';
 import { slack } from '../../chat/client';
 import { channelContext } from '../../lib/context';
 import { rawId } from '../../lib/ids';
+import { input, summary, toolOutput } from '../../types/tools/index';
 import { assertCanManageChannel } from './utils';
 
 export const createCanvasTool = createTool({
   id: 'create_canvas',
   description:
     'Create a standalone Slack canvas. Optionally share it with the current channel by passing that channel id.',
-  inputSchema: z.object({
+  inputSchema: input({
     title: z.string().min(1).optional(),
     channelId: z
       .string()
@@ -23,6 +24,13 @@ export const createCanvasTool = createTool({
         'Initial markdown canvas content. Mentions use ![](@USER_ID) and ![](#CHANNEL_ID), not <@U123>.'
       ),
   }),
+  outputSchema: toolOutput({ canvasId: z.string() }),
+  transform: {
+    display: {
+      output: ({ output }) =>
+        summary(`Created canvas ${output?.canvasId ?? ''}`),
+    },
+  },
   execute: async ({ title, channelId, markdown }, context) => {
     const ctx = channelContext(context?.requestContext);
     if (channelId) {
@@ -35,11 +43,10 @@ export const createCanvasTool = createTool({
         ? { document_content: { type: 'markdown' as const, markdown } }
         : {}),
     });
-    return {
-      success: true,
-      canvasId: response.canvas_id,
-      message: `Created canvas ${response.canvas_id ?? ''}.`,
-    };
+    if (!response.canvas_id) {
+      throw new Error('Slack created the canvas without returning its id.');
+    }
+    return { canvasId: response.canvas_id };
   },
 });
 
@@ -47,7 +54,7 @@ export const createChannelCanvasTool = createTool({
   id: 'create_channel_canvas',
   description:
     'Create the Canvas tab for a Slack channel. Defaults to the current channel. Fails if that channel already has a canvas; use edit_canvas to change it instead.',
-  inputSchema: z.object({
+  inputSchema: input({
     channelId: z
       .string()
       .optional()
@@ -55,6 +62,13 @@ export const createChannelCanvasTool = createTool({
     title: z.string().min(1).optional(),
     markdown: z.string().min(1).optional(),
   }),
+  outputSchema: toolOutput({ channelId: z.string(), canvasId: z.string() }),
+  transform: {
+    display: {
+      output: ({ output }) =>
+        summary(`Created canvas ${output?.canvasId ?? ''}`),
+    },
+  },
   execute: async ({ channelId, title, markdown }, context) => {
     const ctx = channelContext(context?.requestContext);
     const targetChannelId = channelId ?? ctx.channelId;
@@ -70,11 +84,14 @@ export const createChannelCanvasTool = createTool({
           ? { document_content: { type: 'markdown' as const, markdown } }
           : {}),
       });
+      if (!response.canvas_id) {
+        throw new Error(
+          'Slack created the channel canvas without returning its id.'
+        );
+      }
       return {
-        success: true,
         channelId: rawId(targetChannelId),
         canvasId: response.canvas_id,
-        message: `Created channel canvas ${response.canvas_id ?? ''}.`,
       };
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);

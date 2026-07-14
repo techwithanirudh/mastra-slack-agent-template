@@ -2,15 +2,27 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { env } from '@/env';
 import { slack } from '../../chat/client';
+import { input, summary, toolOutput } from '../../types/tools/index';
 import { canvasIdSchema } from './utils';
 
 export const readCanvasTool = createTool({
   id: 'read_canvas',
   description:
     "Read a Slack canvas's content as HTML by its canvas id (e.g. F0123ABCD). Get the id from get_channel_info or create_canvas.",
-  inputSchema: z.object({
+  inputSchema: input({
     canvasId: canvasIdSchema,
   }),
+  outputSchema: toolOutput({
+    canvasId: z.string(),
+    title: z.string().optional(),
+    html: z.string(),
+  }),
+  transform: {
+    display: {
+      output: ({ output }) =>
+        summary(output?.title ?? output?.canvasId ?? 'Canvas read'),
+    },
+  },
   execute: async ({ canvasId }) => {
     const info = await slack.webClient.files.info({ file: canvasId });
     const url = info.file?.url_private_download ?? info.file?.url_private;
@@ -27,11 +39,9 @@ export const readCanvasTool = createTool({
     }
     const html = await response.text();
     return {
-      success: true,
       canvasId,
       title: info.file?.title,
       html,
-      message: `Read canvas ${canvasId}.`,
     };
   },
 });

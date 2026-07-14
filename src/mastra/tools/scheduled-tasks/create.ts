@@ -3,6 +3,12 @@ import { computeNextFireAt, validateCron } from '@mastra/core/workflows';
 import { z } from 'zod';
 import { agent as agentConfig, scheduledTasks } from '../../config';
 import { taskContext } from '../../lib/memory';
+import {
+  input,
+  scheduledTaskSchema,
+  summary,
+  toolOutput,
+} from '../../types/tools/index';
 import { schedules } from './queries';
 import { formatTask, scheduledTaskKind } from './utils';
 
@@ -36,7 +42,7 @@ export const createScheduledTaskTool = createTool({
   id: 'create_scheduled_task',
   description:
     'Create a recurring scheduled task from a cron expression. Use for recurring tasks only, not one-time reminders. The task runs where it was scheduled: the current Slack thread or DM. A top-level channel message is treated as a thread rooted at that message. Include an IANA timezone when the schedule is time-of-day sensitive. The minimum interval is 5 minutes.',
-  inputSchema: z.object({
+  inputSchema: input({
     task: z
       .string()
       .min(1)
@@ -59,6 +65,13 @@ export const createScheduledTaskTool = createTool({
       .optional()
       .describe('Short human-readable label for the task.'),
   }),
+  outputSchema: toolOutput({ task: scheduledTaskSchema }),
+  transform: {
+    display: {
+      output: ({ output }) =>
+        summary(`Created scheduled task ${output?.task.id ?? ''}`),
+    },
+  },
   execute: async (input, context) => {
     const service = schedules(context);
     const {
@@ -102,9 +115,7 @@ export const createScheduledTaskTool = createTool({
     });
 
     return {
-      success: true,
       task: formatTask({ task: created }),
-      message: `Recurring scheduled task created: ${created.id}.`,
     };
   },
 });

@@ -1,6 +1,12 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import {
+  input,
+  scheduledTaskSchema,
+  summary,
+  toolOutput,
+} from '../../types/tools/index';
+import {
   findOwnedTask,
   isAgentSchedule,
   schedules,
@@ -12,9 +18,16 @@ export const pauseScheduledTaskTool = createTool({
   id: 'pause_scheduled_task',
   description:
     'Temporarily stop a recurring scheduled task without deleting it.',
-  inputSchema: z.object({
+  inputSchema: input({
     id: z.string().min(1).describe('Scheduled task id.'),
   }),
+  outputSchema: toolOutput({ task: scheduledTaskSchema }),
+  transform: {
+    display: {
+      output: ({ output }) =>
+        summary(`Paused scheduled task ${output?.task.id ?? ''}`),
+    },
+  },
   execute: async ({ id }, context) => {
     const service = schedules(context);
     const scope = taskScope(context);
@@ -26,9 +39,7 @@ export const pauseScheduledTaskTool = createTool({
     const updated = result;
 
     return {
-      success: true,
       task: formatTask({ task: updated, currentResourceId: scope.resourceId }),
-      message: `Paused scheduled task ${id}.`,
     };
   },
 });

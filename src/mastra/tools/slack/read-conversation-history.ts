@@ -3,13 +3,19 @@ import { z } from 'zod';
 import { slack } from '../../chat/client';
 import { channelContext } from '../../lib/context';
 import { chatChannelId } from '../../lib/ids';
+import {
+  input,
+  slackMessageSchema,
+  summary,
+  toolOutput,
+} from '../../types/tools/index';
 import { formatMessage, joinChannel } from './utils';
 
 export const readConversationHistoryTool = createTool({
   id: 'read_conversation_history',
   description:
     'Read recent raw messages from any Slack channel or thread the bot can access when exact wording matters. For a long thread, prefer summarize_thread so the full transcript stays out of model context.',
-  inputSchema: z.object({
+  inputSchema: input({
     channelId: z
       .string()
       .optional()
@@ -24,6 +30,17 @@ export const readConversationHistoryTool = createTool({
       .optional()
       .describe('Slack pagination cursor from a previous response.'),
   }),
+  outputSchema: toolOutput({
+    channelId: z.string(),
+    messages: z.array(slackMessageSchema),
+    nextCursor: z.string().optional(),
+  }),
+  transform: {
+    display: {
+      output: ({ output }) =>
+        summary(`Read ${output?.messages.length ?? 0} messages`),
+    },
+  },
   execute: async ({ channelId, threadId, limit, cursor }, context) => {
     const ctx = channelContext(context?.requestContext);
     const tid = threadId ?? (channelId ? undefined : ctx.threadId);
@@ -41,11 +58,9 @@ export const readConversationHistoryTool = createTool({
       : await slack.fetchChannelMessages(chId, { limit, cursor });
 
     return {
-      success: true,
       channelId: chId,
       messages: result.messages.map(formatMessage),
       nextCursor: result.nextCursor,
-      message: `Read ${result.messages.length} message${result.messages.length === 1 ? '' : 's'} from ${tid ?? chId}.`,
     };
   },
 });

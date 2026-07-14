@@ -1,6 +1,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { sh } from '../lib/shell';
+import { input, summary, toolOutput } from '../types/tools/index';
 import { getSandbox } from '../workspace';
 
 const MAX_OUTPUT_LINES = 500;
@@ -24,7 +25,7 @@ export const grepTool = createTool({
   id: 'grep',
   description:
     'Search file contents using a regex pattern via ripgrep. Fast native search inside the sandbox. Respects .gitignore by default.',
-  inputSchema: z.object({
+  inputSchema: input({
     pattern: z.string().min(1).describe('Regex pattern to search for.'),
     path: z
       .string()
@@ -61,6 +62,15 @@ export const grepTool = createTool({
       .default(false)
       .describe('Include hidden files and directories (default: false).'),
   }),
+  outputSchema: toolOutput({
+    matches: z.number().int().min(0),
+    output: z.string().optional(),
+  }),
+  transform: {
+    display: {
+      output: ({ output }) => summary(`Found ${output?.matches ?? 0} matches`),
+    },
+  },
   execute: async (
     { pattern, path, contextLines, maxCount, caseSensitive, includeHidden },
     context
@@ -109,9 +119,7 @@ export const grepTool = createTool({
       const exit = commandErrorSchema.safeParse(error).data ?? {};
       if (exit.exitCode === 1) {
         return {
-          success: true,
           matches: 0,
-          message: `No matches for "${pattern}".`,
         };
       }
       throw new Error(
@@ -166,9 +174,7 @@ export const grepTool = createTool({
 
     if (matchCount === 0) {
       return {
-        success: true,
         matches: 0,
-        message: `No matches for "${pattern}".`,
       };
     }
 
@@ -188,10 +194,8 @@ export const grepTool = createTool({
     }
 
     return {
-      success: true,
       matches: matchCount,
       output: output.join('\n'),
-      message: `${matchCount} matching line${matchCount === 1 ? '' : 's'} for "${pattern}"${truncated ? ' (truncated)' : ''}.`,
     };
   },
 });
