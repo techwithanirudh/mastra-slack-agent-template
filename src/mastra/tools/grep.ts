@@ -1,19 +1,24 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { sh } from '../lib/shell';
-import { resolveE2BSandbox } from '../workspace';
+import { getSandbox } from '../workspace';
 
 const MAX_OUTPUT_LINES = 500;
 
-interface RgMatchRecord {
-  data: {
-    path: { text: string };
-    lines: { text: string };
-    line_number: number;
-    submatches?: { start: number }[];
-  };
-  type: 'match' | 'context';
-}
+const rgMatchRecordSchema = z.object({
+  data: z.object({
+    path: z.object({ text: z.string() }),
+    lines: z.object({ text: z.string() }),
+    line_number: z.number(),
+  }),
+  type: z.enum(['match', 'context']),
+});
+
+const commandErrorSchema = z.looseObject({
+  exitCode: z.number().optional(),
+  stdout: z.string().optional(),
+  stderr: z.string().optional(),
+});
 
 export const grepTool = createTool({
   id: 'grep',
@@ -63,7 +68,7 @@ export const grepTool = createTool({
     if (!context?.requestContext) {
       throw new Error('No workspace context.');
     }
-    const sandbox = await resolveE2BSandbox(context.requestContext);
+    const sandbox = await getSandbox(context.requestContext);
     if (!sandbox) {
       throw new Error('No sandbox available.');
     }
@@ -101,11 +106,7 @@ export const grepTool = createTool({
       ));
     } catch (error) {
       // ripgrep uses exit 1 for no matches and 2 for errors.
-      const exit = error as {
-        exitCode?: number;
-        stdout?: string;
-        stderr?: string;
-      };
+      const exit = commandErrorSchema.safeParse(error).data ?? {};
       if (exit.exitCode === 1) {
         return {
           success: true,
@@ -128,16 +129,21 @@ export const grepTool = createTool({
       if (!line) {
         continue;
       }
-      let record: RgMatchRecord;
+      let parsed: unknown;
       try {
-        record = JSON.parse(line) as RgMatchRecord;
+        parsed = JSON.parse(line);
       } catch {
         continue;
       }
-      if (record.type !== 'match' && record.type !== 'context') {
+      const record = rgMatchRecordSchema.safeParse(parsed);
+      if (!record.success) {
         continue;
       }
-      const { path: filePath, lines, line_number: lineNumber } = record.data;
+      const {
+        path: filePath,
+        lines,
+        line_number: lineNumber,
+      } = record.data.data;
       const text = lines.text.replace(/\n$/, '');
       let fileLines = byFile.get(filePath.text);
       if (!fileLines) {
@@ -145,7 +151,7 @@ export const grepTool = createTool({
         byFile.set(filePath.text, fileLines);
         fileOrder.push(filePath.text);
       }
-      if (record.type === 'match') {
+      if (record.data.type === 'match') {
         matchCount += 1;
         fileLines.push(`  Line ${lineNumber}: ${text}`);
       } else {

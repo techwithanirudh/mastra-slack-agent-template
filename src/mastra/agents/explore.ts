@@ -9,7 +9,7 @@ import { agent as config } from '../config';
 import { logTools } from '../lib/logger/tools';
 import { stepCountIs } from '../lib/tools';
 import { sandbox } from '../processors/sandbox';
-import { relocateToolResultImages } from '../processors/tool-media';
+import { moveToolImages } from '../processors/tool-media';
 import { explorer } from '../providers';
 import { fetchUrlTool } from '../tools/fetch-url';
 import { grepTool } from '../tools/grep';
@@ -44,10 +44,10 @@ export const exploreAgent = new Agent({
       trimMode: 'contiguous',
     }),
     new ProviderHistoryCompat({
-      additionalRules: [relocateToolResultImages],
+      additionalRules: [moveToolImages],
     }),
   ],
-  defaultOptions: { 
+  defaultOptions: {
     activeTools: [
       'skill',
       'skill_search',

@@ -1,14 +1,22 @@
 import type { AgentSchedule } from '@mastra/core/schedules';
+import { z } from 'zod';
 
 export const scheduledTaskKind = 'scheduled-task';
 
-export function formatTask(
-  task: AgentSchedule,
-  currentResourceId?: string
-): Record<string, unknown> {
-  const createdIn = task.metadata?.createdIn as
-    | { threadId?: string }
-    | undefined;
+export const taskCreatedInSchema = z.object({
+  threadId: z.string().optional(),
+});
+
+export function formatTask({
+  task,
+  currentResourceId,
+}: {
+  task: AgentSchedule;
+  currentResourceId?: string;
+}): Record<string, unknown> {
+  const createdIn = taskCreatedInSchema.safeParse(
+    task.metadata?.createdIn
+  ).data;
   return {
     id: task.id,
     name: task.name,

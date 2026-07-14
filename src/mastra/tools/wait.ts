@@ -1,7 +1,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { agent as agentConfig } from '../config';
-import { resolveThreadContext } from '../lib/memory';
+import { taskContext } from '../lib/memory';
 import { isAgentSchedule } from './scheduled-tasks/queries';
 
 export const waitTool = createTool({
@@ -27,12 +27,11 @@ export const waitTool = createTool({
         'Could not resolve this conversation to a memory thread yet. Send another message and try again.'
       );
     }
-    const { threadId, resourceId: memoryResourceId } =
-      await resolveThreadContext({
-        context,
-        agentId: agentConfig.id,
-        missingContextMessage: 'No current Slack thread/resource to wait in.',
-      });
+    const { threadId, resourceId: memoryResourceId } = await taskContext({
+      context,
+      agentId: agentConfig.id,
+      missing: 'No current Slack thread/resource to wait in.',
+    });
 
     const previous = await schedules.list({ agentId: agentConfig.id });
     await Promise.all(

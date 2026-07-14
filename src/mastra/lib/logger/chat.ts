@@ -1,10 +1,11 @@
 import type { Logger as ChatLogger } from 'chat';
+import { isRecord } from '../utils';
 import { logger } from '.';
 
 function meta(args: unknown[]): Record<string, unknown> {
   const [first] = args;
-  if (args.length === 1 && first && typeof first === 'object') {
-    return first as Record<string, unknown>;
+  if (args.length === 1 && isRecord(first)) {
+    return first;
   }
   return args.length > 0 ? { args } : {};
 }

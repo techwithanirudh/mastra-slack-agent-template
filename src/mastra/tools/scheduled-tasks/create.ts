@@ -2,11 +2,17 @@ import { createTool } from '@mastra/core/tools';
 import { computeNextFireAt, validateCron } from '@mastra/core/workflows';
 import { z } from 'zod';
 import { agent as agentConfig, scheduledTasks } from '../../config';
-import { resolveThreadContext } from '../../lib/memory';
+import { taskContext } from '../../lib/memory';
 import { schedules } from './queries';
 import { formatTask, scheduledTaskKind } from './utils';
 
-function assertMinimumInterval(cron: string, timezone?: string): void {
+function assertMinimumInterval({
+  cron,
+  timezone,
+}: {
+  cron: string;
+  timezone?: string;
+}): void {
   validateCron(cron, timezone);
   let previous = computeNextFireAt(cron, { timezone });
   for (let index = 1; index < 5; index += 1) {
@@ -59,14 +65,13 @@ export const createScheduledTaskTool = createTool({
       threadId,
       resourceId: memoryResourceId,
       ctx,
-    } = await resolveThreadContext({
+    } = await taskContext({
       context,
       agentId: agentConfig.id,
-      missingContextMessage:
-        'No current Slack thread/resource to schedule into.',
+      missing: 'No current Slack thread/resource to schedule into.',
     });
 
-    assertMinimumInterval(input.cron, input.timezone);
+    assertMinimumInterval({ cron: input.cron, timezone: input.timezone });
 
     const created = await service.create({
       agentId: agentConfig.id,
@@ -98,7 +103,7 @@ export const createScheduledTaskTool = createTool({
 
     return {
       success: true,
-      task: formatTask(created),
+      task: formatTask({ task: created }),
       message: `Recurring scheduled task created: ${created.id}.`,
     };
   },

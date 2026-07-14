@@ -256,18 +256,18 @@ instead of a manual diff every time.
   ~3 seconds (`durationMs: 3197`, `2981` in actual logs), far too fast to
   need backgrounding, and the model had no way to check on a backgrounded
   delegation (tried a sandbox-process `pid` that doesn't exist for this
-  system) — confusion with no upside. Pulled the `backgroundTasks` config
+  system), confusion with no upside. Pulled the `backgroundTasks` config
   from `index.ts` and `agents/orchestrator.ts`.
   Checked how Mastra's own coding agent (`mastracode`, in `mastra-ai/mastra`)
   does this before reverting blind: it does **not** use `Agent.agents` +
-  `backgroundTasks` for concurrent subagents at all — `sdk/src/agents/modes/`
+  `backgroundTasks` for concurrent subagents at all, `sdk/src/agents/modes/`
   (`build.ts`/`explore.ts`/`plan.ts`) is mode-switching on one agent, not
   parallel background delegation. So this isn't "we did it wrong", it's "this
   mechanism isn't what backgrounding is for here."
   What Mastra actually ships for "let the model choose to background a slow
   call," matching Claude Code's `run_in_background` on its Bash tool exactly:
   `execute_command`'s optional `background: boolean` input (only appears in
-  the tool schema when `sandbox.processes` exists — see
+  the tool schema when `sandbox.processes` exists, see
   `@mastra/core/workspace/tools/execute-command.d.ts`), paired with
   `get_process_output` and `kill_process` tools and a `SandboxProcessManager`
   abstract class (`spawn`/`list`/`get`/`kill`) with a working
@@ -299,7 +299,7 @@ instead of a manual diff every time.
      `agent.types.d.ts:624`. Getting model choice would mean replacing the
      auto-generated `agent-${name}` tools with hand-rolled ones (a normal
      `createTool` per subagent, with `model` in its own input schema, calling
-     `subagent.stream(prompt, { model: chosenModel, ... })` directly) — losing
+     `subagent.stream(prompt, { model: chosenModel, ... })` directly), losing
      the free auto-wiring (and whatever the current delegation-logging hooks
      tie into specifically, re-verify once that machinery settles) in exchange
      for the extra field.
@@ -326,18 +326,13 @@ instead of a manual diff every time.
   this template is mechanical, not a manual line-by-line diff every time. For
   example: tool-facing strings currently written as "Gorkie can't do X" should
   be genuinely identity-neutral ("Can't do X") in gorkie's own source, not
-  find-and-replaced during porting. HOLD OFF: a design doc already exists at
-  `plans/generalize-gorkie.md` (identity config block in `config.ts`, consumed
-  by personality/core/slack prompts and tool files; also flags Mastra's
-  built-in `ChannelContext.botMention`/`botUserId` as an unused, higher-value
-  fix for gorkie's hardcoded self-recognition Slack ids). It went stale within
-  minutes of being written because too much is moving in parallel right now:
+  find-and-replaced during porting. HOLD OFF: the previous design went stale
+  within minutes because too much is moving in parallel right now:
   gorkie gained new "Gorkie"-branded strings from an unrelated code-mode/canvas/
   pins build (shifts the plan's file/line citations), and this repo deleted
   `tools/slack/edit-message.ts`/`delete-message.ts` entirely (the plan's step 6
-  names both as edit targets). Do not execute the plan as-is. Once things
-  settle, re-grep both repos fresh against current state, fix the plan's
-  citations, then execute.
+  names both as edit targets). Once things settle, re-grep both repos against
+  current state and write a fresh implementation plan.
 - [ ] Send-as-user tools: a real "send this in that channel/DM as me"
   capability, separate from the agent authoring and posting its own message.
   See the deferred Slack tool-authorization item below: agent-authored posts

@@ -5,23 +5,33 @@ import { chat } from '../../chat/instance';
 import { threadState } from '../../chat/state';
 import { channelContext } from '../../lib/context';
 
-function snippet(text: string, max = 600): string {
+function truncateText({
+  text,
+  limit = 600,
+}: {
+  text: string;
+  limit?: number;
+}): string {
   const normalized = text.replace(/\s+/g, ' ').trim();
-  if (normalized.length <= max) {
+  if (normalized.length <= limit) {
     return normalized;
   }
-  return `${normalized.slice(0, max - 3)}...`;
+  return `${normalized.slice(0, limit - 3)}...`;
 }
 
-const contextMessage = z
+const contextMessageSchema = z
   .looseObject({
     text: z.string().optional(),
     ts: z.string().optional(),
     user_id: z.string().optional(),
   })
-  .transform((m) => ({ text: m.text ?? '', ts: m.ts, userId: m.user_id }));
+  .transform((message) => ({
+    text: message.text ?? '',
+    ts: message.ts,
+    userId: message.user_id,
+  }));
 
-const searchResponse = z.looseObject({
+const searchResponseSchema = z.looseObject({
   response_metadata: z
     .looseObject({ next_cursor: z.string().optional() })
     .optional(),
@@ -38,26 +48,26 @@ const searchResponse = z.looseObject({
               content: z.string().optional(),
               context_messages: z
                 .looseObject({
-                  after: z.array(contextMessage).optional(),
-                  before: z.array(contextMessage).optional(),
+                  after: z.array(contextMessageSchema).optional(),
+                  before: z.array(contextMessageSchema).optional(),
                 })
                 .optional(),
               permalink: z.string().optional(),
               team_id: z.string().optional(),
             })
-            .transform((m) => ({
-              author: m.author_name,
-              userId: m.author_user_id,
-              channelId: m.channel_id,
-              channelName: m.channel_name,
-              text: snippet(m.content ?? ''),
-              before: (m.context_messages?.before ?? [])
+            .transform((message) => ({
+              author: message.author_name,
+              userId: message.author_user_id,
+              channelId: message.channel_id,
+              channelName: message.channel_name,
+              text: truncateText({ text: message.content ?? '' }),
+              before: (message.context_messages?.before ?? [])
                 .slice(-3)
-                .map((item) => snippet(item.text, 180)),
-              after: (m.context_messages?.after ?? [])
+                .map((item) => truncateText({ text: item.text, limit: 180 })),
+              after: (message.context_messages?.after ?? [])
                 .slice(0, 3)
-                .map((item) => snippet(item.text, 180)),
-              permalink: m.permalink,
+                .map((item) => truncateText({ text: item.text, limit: 180 })),
+              permalink: message.permalink,
             }))
         )
         .optional(),
@@ -95,9 +105,9 @@ export const searchSlackTool = createTool({
       };
     }
 
-    let res: z.infer<typeof searchResponse>;
+    let response: z.infer<typeof searchResponseSchema>;
     try {
-      res = searchResponse.parse(
+      response = searchResponseSchema.parse(
         await slack.webClient.apiCall('assistant.search.context', {
           action_token: token,
           content_types: ['messages'],
@@ -123,12 +133,12 @@ export const searchSlackTool = createTool({
       throw error;
     }
 
-    const messages = res.results?.messages ?? [];
+    const messages = response.results?.messages ?? [];
     return {
       success: true,
       messages,
       count: messages.length,
-      nextCursor: res.response_metadata?.next_cursor || undefined,
+      nextCursor: response.response_metadata?.next_cursor || undefined,
       message: `Slack search found ${messages.length} message${messages.length === 1 ? '' : 's'} for "${query}".`,
     };
   },

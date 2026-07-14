@@ -2,10 +2,13 @@ import type { Agent } from '@mastra/core/agent';
 import type { ChannelContext, TaskToolContext } from '../types';
 import { channelContext } from './context';
 
-export async function resolveMemoryThread(
-  agent: Agent,
-  externalThreadId: string
-): Promise<{ id: string; resourceId?: string; title?: string }> {
+export async function memoryThread({
+  agent,
+  externalThreadId,
+}: {
+  agent: Agent;
+  externalThreadId: string;
+}): Promise<{ id: string; resourceId?: string; title?: string }> {
   const memory = await agent.getMemory();
   const found = await memory?.listThreads({
     filter: { metadata: { channel_externalThreadId: externalThreadId } },
@@ -20,14 +23,14 @@ export async function resolveMemoryThread(
   return thread;
 }
 
-export async function resolveThreadContext({
+export async function taskContext({
   context,
   agentId,
-  missingContextMessage,
+  missing,
 }: {
   context: TaskToolContext;
   agentId: string;
-  missingContextMessage: string;
+  missing: string;
 }): Promise<{
   resolvedAgent: Agent;
   threadId: string;
@@ -38,7 +41,7 @@ export async function resolveThreadContext({
   const resourceId = context.agent?.resourceId;
   const externalThreadId = ctx.threadId;
   if (!(externalThreadId && resourceId)) {
-    throw new Error(missingContextMessage);
+    throw new Error(missing);
   }
   const resolvedAgent = context.mastra?.getAgentById(agentId);
   if (!resolvedAgent) {
@@ -46,14 +49,14 @@ export async function resolveThreadContext({
       'Could not resolve this conversation to a memory thread yet. Send another message and try again.'
     );
   }
-  const memoryThread = await resolveMemoryThread(
-    resolvedAgent,
-    externalThreadId
-  );
+  const thread = await memoryThread({
+    agent: resolvedAgent,
+    externalThreadId,
+  });
   return {
     resolvedAgent,
-    threadId: memoryThread.id,
-    resourceId: memoryThread.resourceId ?? resourceId,
+    threadId: thread.id,
+    resourceId: thread.resourceId ?? resourceId,
     ctx,
   };
 }

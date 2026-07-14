@@ -6,7 +6,7 @@ import type {
 import { agent } from '../../config';
 import { channelContext } from '../../lib/context';
 import type { TaskToolContext } from '../../types';
-import { scheduledTaskKind } from './utils';
+import { scheduledTaskKind, taskCreatedInSchema } from './utils';
 
 export function isAgentSchedule(
   schedule: AnySchedule
@@ -36,13 +36,18 @@ export function taskScope(context: TaskToolContext): {
   };
 }
 
-export function canViewTask(
-  task: AgentSchedule,
-  { resourceId, threadId }: { resourceId: string; threadId?: string }
-): boolean {
-  const createdIn = task.metadata?.createdIn as
-    | { threadId?: string }
-    | undefined;
+export function canViewTask({
+  task,
+  resourceId,
+  threadId,
+}: {
+  task: AgentSchedule;
+  resourceId: string;
+  threadId?: string;
+}): boolean {
+  const createdIn = taskCreatedInSchema.safeParse(
+    task.metadata?.createdIn
+  ).data;
 
   return (
     task.resourceId === resourceId ||
@@ -50,24 +55,32 @@ export function canViewTask(
   );
 }
 
-export function canManageTask(
-  task: AgentSchedule,
-  { resourceId }: { resourceId: string }
-): boolean {
+export function canManageTask({
+  task,
+  resourceId,
+}: {
+  task: AgentSchedule;
+  resourceId: string;
+}): boolean {
   return task.resourceId === resourceId;
 }
 
-export async function findOwnedTask(
-  service: Schedules,
-  { id, resourceId }: { id: string; resourceId: string }
-): Promise<AgentSchedule> {
+export async function findOwnedTask({
+  service,
+  id,
+  resourceId,
+}: {
+  service: Schedules;
+  id: string;
+  resourceId: string;
+}): Promise<AgentSchedule> {
   const current = await service.list({ agentId: agent.id });
   const task = current.find(
     (item): item is AgentSchedule =>
       item.id === id &&
       isAgentSchedule(item) &&
       item.metadata?.kind === scheduledTaskKind &&
-      canManageTask(item, { resourceId })
+      canManageTask({ task: item, resourceId })
   );
   if (!task) {
     throw new Error(

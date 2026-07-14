@@ -3,7 +3,8 @@ import type {
   ProcessOutputStepArgs,
 } from '@mastra/core/processors';
 import { agent as agentConfig, sandbox as sandboxConfig } from '../config';
-import { resolveE2BSandbox } from '../workspace';
+import { logger } from '../lib/logger';
+import { getSandbox } from '../workspace';
 
 const sandboxTools = new Set([
   'execute_command',
@@ -38,11 +39,12 @@ export const sandbox = {
       )
     ) {
       try {
-        const sandbox = await resolveE2BSandbox(requestContext);
+        const sandbox = await getSandbox(requestContext);
         await sandbox?.retryOnDead(() =>
           sandbox.e2b.setTimeout(sandboxConfig.timeout)
         );
-      } catch {
+      } catch (error) {
+        logger.warn('[sandbox] failed to extend lifetime', { error });
         return messages;
       }
     }
@@ -54,9 +56,10 @@ export const sandbox = {
       return messages;
     }
     try {
-      const sandbox = await resolveE2BSandbox(requestContext);
+      const sandbox = await getSandbox(requestContext);
       await sandbox?.retryOnDead(() => sandbox.e2b.pause());
-    } catch {
+    } catch (error) {
+      logger.warn('[sandbox] failed to pause', { error });
       return messages;
     }
     return messages;

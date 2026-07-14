@@ -1,11 +1,8 @@
 import type { RequestContext } from '@mastra/core/request-context';
-import type { ChannelContext, SlackAgentRequestContext } from '../types';
+import type { ChannelContext } from '../types';
 
 export function channelContext(
   requestContext?: RequestContext
 ): ChannelContext {
-  return (
-    (requestContext as SlackAgentRequestContext | undefined)?.get('channel') ??
-    {}
-  );
+  return requestContext?.get<'channel', ChannelContext>('channel') ?? {};
 }

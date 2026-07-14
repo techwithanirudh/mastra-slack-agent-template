@@ -30,8 +30,9 @@ export const footer = {
   processOutputStep(args: ProcessOutputStepArgs) {
     const { stepStart } = args.state;
     if (typeof stepStart === 'number') {
+      const { llmTimeMs } = args.state;
       args.state.llmTimeMs =
-        ((args.state.llmTimeMs as number | undefined) ?? 0) +
+        (typeof llmTimeMs === 'number' ? llmTimeMs : 0) +
         (Date.now() - stepStart);
     }
     return args.messages;

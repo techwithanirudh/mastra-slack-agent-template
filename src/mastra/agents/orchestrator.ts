@@ -23,8 +23,8 @@ import {
 import { stepCountIs, toolCall } from '../lib/tools';
 import { outputProcessors } from '../processors';
 import { footer } from '../processors/footer';
-import { relocateToolResultImages } from '../processors/tool-media';
-import { buildInstructions } from '../prompts';
+import { moveToolImages } from '../processors/tool-media';
+import { instructions } from '../prompts';
 import {
   orchestrator as orchestratorModel,
   summarizer as summarizerModel,
@@ -38,7 +38,7 @@ import { researchAgent } from './research';
 const orchestrator = new Agent({
   id: config.id,
   name: 'Orchestrator',
-  instructions: ({ requestContext }) => buildInstructions(requestContext),
+  instructions: ({ requestContext }) => instructions(requestContext),
   model: orchestratorModel,
   hooks: logTools,
   defaultOptions: {
@@ -69,7 +69,7 @@ const orchestrator = new Agent({
       trimMode: 'contiguous',
     }),
     new ProviderHistoryCompat({
-      additionalRules: [relocateToolResultImages],
+      additionalRules: [moveToolImages],
     }),
     footer,
   ],

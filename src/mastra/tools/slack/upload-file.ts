@@ -2,7 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { resolveTarget, targetSchema } from '../../chat/target';
 import { channelContext } from '../../lib/context';
-import { resolveE2BSandbox } from '../../workspace';
+import { getSandbox } from '../../workspace';
 import { joinChannel } from './utils';
 
 export const uploadFileTool = createTool({
@@ -32,7 +32,7 @@ export const uploadFileTool = createTool({
     if (!context?.requestContext) {
       throw new Error('No workspace context.');
     }
-    const sandbox = await resolveE2BSandbox(context.requestContext);
+    const sandbox = await getSandbox(context.requestContext);
     if (!sandbox) {
       throw new Error('No sandbox available.');
     }

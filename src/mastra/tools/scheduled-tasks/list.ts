@@ -17,13 +17,15 @@ export const listScheduledTasksTool = createTool({
       (task): task is AgentSchedule =>
         isAgentSchedule(task) &&
         task.metadata?.kind === scheduledTaskKind &&
-        canViewTask(task, scope)
+        canViewTask({ task, ...scope })
     );
 
     return {
       success: true,
       count: visible.length,
-      tasks: visible.map((task) => formatTask(task, scope.resourceId)),
+      tasks: visible.map((task) =>
+        formatTask({ task, currentResourceId: scope.resourceId })
+      ),
       message:
         visible.length === 0
           ? 'No recurring scheduled tasks found.'

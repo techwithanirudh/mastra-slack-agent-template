@@ -5,46 +5,23 @@ import { attachments } from './attachments';
 import { slack } from './client';
 import { handleCommand } from './commands';
 import { rawText, withoutLeadingMentions } from './message';
+import { withStatus } from './reactions';
 import { threadState } from './state';
 
 type DefaultHandler = (thread: Thread, message: Message) => Promise<void>;
 
-const actionToken = z.looseObject({
+const actionTokenSchema = z.looseObject({
   action_token: z.string().min(1).optional(),
 });
 
-const WORKING_REACTION = 'hourglass_flowing_sand';
-const DONE_REACTION = 'white_check_mark';
-const FAILED_REACTION = 'x';
-
-async function withWorkingReaction(
-  message: Message,
-  run: () => Promise<void>
-): Promise<void> {
-  const { channel } = slack.decodeThreadId(message.threadId);
-  const target = { channel, timestamp: message.id };
-  await slack.webClient.reactions
-    .add({ ...target, name: WORKING_REACTION })
-    .catch(() => undefined);
-  try {
-    await run();
-    await slack.webClient.reactions
-      .add({ ...target, name: DONE_REACTION })
-      .catch(() => undefined);
-  } catch (error) {
-    await slack.webClient.reactions
-      .add({ ...target, name: FAILED_REACTION })
-      .catch(() => undefined);
-    throw error;
-  } finally {
-    await slack.webClient.reactions
-      .remove({ ...target, name: WORKING_REACTION })
-      .catch(() => undefined);
-  }
-}
-
-async function captureSearchToken(thread: Thread, raw: unknown): Promise<void> {
-  const parsed = actionToken.safeParse(raw);
+async function captureSearchToken({
+  raw,
+  thread,
+}: {
+  raw: unknown;
+  thread: Thread;
+}): Promise<void> {
+  const parsed = actionTokenSchema.safeParse(raw);
   const searchToken = parsed.success ? parsed.data.action_token : undefined;
   if (searchToken) {
     await thread.setState({ searchToken });
@@ -59,7 +36,7 @@ function isFromBot(message: Message): boolean {
   );
 }
 
-function comment(message: Message): boolean {
+function isComment(message: Message): boolean {
   for (const line of rawText(message).split('\n')) {
     if (withoutLeadingMentions(line).trimStart().startsWith('##')) {
       return true;
@@ -68,11 +45,15 @@ function comment(message: Message): boolean {
   return false;
 }
 
-async function respond(
-  thread: Thread,
-  message: Message,
-  defaultHandler: DefaultHandler
-): Promise<void> {
+async function runTurn({
+  defaultHandler,
+  message,
+  thread,
+}: {
+  defaultHandler: DefaultHandler;
+  message: Message;
+  thread: Thread;
+}): Promise<void> {
   logger.info('[chat] turn started', {
     threadId: thread.id,
     author: message.author.userName,
@@ -85,9 +66,10 @@ async function respond(
     text: message.text,
   });
 
-  await withWorkingReaction(message, () =>
-    defaultHandler(thread, attachments(message))
-  );
+  await withStatus({
+    message,
+    run: () => defaultHandler(thread, attachments(message)),
+  });
 }
 
 export async function onMention(
@@ -95,17 +77,17 @@ export async function onMention(
   message: Message,
   defaultHandler: DefaultHandler
 ): Promise<void> {
-  await captureSearchToken(thread, message.raw);
+  await captureSearchToken({ raw: message.raw, thread });
   if (isFromBot(message)) {
     return;
   }
   if (slack.decodeThreadId(message.threadId).threadTs === message.id) {
     await thread.setState({ respondOnThreadMessages: true });
   }
-  if (await handleCommand(thread, message)) {
+  if (await handleCommand({ message, thread })) {
     return;
   }
-  await respond(thread, message, defaultHandler);
+  await runTurn({ defaultHandler, message, thread });
 }
 
 export async function onSubscribedMessage(
@@ -113,8 +95,8 @@ export async function onSubscribedMessage(
   message: Message,
   defaultHandler: DefaultHandler
 ): Promise<void> {
-  await captureSearchToken(thread, message.raw);
-  if (isFromBot(message) || comment(message)) {
+  await captureSearchToken({ raw: message.raw, thread });
+  if (isFromBot(message) || isComment(message)) {
     return;
   }
   const state = await threadState(thread);
@@ -122,14 +104,14 @@ export async function onSubscribedMessage(
   if (!(isFollowingThread || message.isMention)) {
     return;
   }
-  if (await handleCommand(thread, message)) {
+  if (await handleCommand({ message, thread })) {
     return;
   }
   if (!isFollowingThread) {
     // Force history backfill for one-off mid-thread mentions that Mastra already marked subscribed.
     await thread.unsubscribe().catch(() => undefined);
   }
-  await respond(thread, message, defaultHandler);
+  await runTurn({ defaultHandler, message, thread });
 }
 
 export async function onDirectMessage(
@@ -137,12 +119,12 @@ export async function onDirectMessage(
   message: Message,
   defaultHandler: DefaultHandler
 ): Promise<void> {
-  await captureSearchToken(thread, message.raw);
+  await captureSearchToken({ raw: message.raw, thread });
   if (isFromBot(message)) {
     return;
   }
-  if (await handleCommand(thread, message)) {
+  if (await handleCommand({ message, thread })) {
     return;
   }
-  await respond(thread, message, defaultHandler);
+  await runTurn({ defaultHandler, message, thread });
 }

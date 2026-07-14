@@ -6,9 +6,7 @@ import { personalityPrompt } from './personality';
 import { slackPrompt } from './slack';
 import { toolsPrompt } from './tools';
 
-export function buildInstructions(
-  requestContext: RequestContext
-): SystemMessage {
+export function instructions(requestContext: RequestContext): SystemMessage {
   const context = contextPrompt(requestContext);
   const messages: CoreSystemMessage[] = [
     {

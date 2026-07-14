@@ -28,7 +28,7 @@ import { FileNotFoundError as E2BFileNotFoundError, FileType } from 'e2b';
 import { lookup } from 'mime-types';
 import { sandbox as config } from '../config';
 
-interface E2BFilesystemOptions {
+interface FilesystemOptions {
   basePath?: string;
   readOnly?: boolean;
   sandbox: E2BSandbox;
@@ -42,7 +42,7 @@ export class E2BFilesystem extends MastraFilesystem {
   readonly basePath: string;
   status: ProviderStatus = 'pending';
 
-  constructor(options: E2BFilesystemOptions) {
+  constructor(options: FilesystemOptions) {
     super({ name: 'E2BFilesystem' });
     this.id = `${options.sandbox.id}-filesystem`;
     this.basePath = path.posix.normalize(options.basePath ?? config.workdir);
@@ -106,8 +106,8 @@ export class E2BFilesystem extends MastraFilesystem {
       if (error instanceof IsDirectoryError) {
         throw error;
       }
-      if (this.isNotFound(error)) {
-        throw this.withCause(new FileNotFoundError(inputPath), error);
+      if (this.missing(error)) {
+        throw this.cause(new FileNotFoundError(inputPath), error);
       }
       throw error;
     }
@@ -123,7 +123,7 @@ export class E2BFilesystem extends MastraFilesystem {
     const filePath = this.resolve(inputPath);
 
     if (options?.recursive === false) {
-      await this.assertParentDirectory(filePath, inputPath);
+      await this.assertParent({ filePath, inputPath });
     } else {
       await this.e2b(() =>
         this.sandbox.e2b.files.makeDir(path.posix.dirname(filePath))
@@ -151,14 +151,14 @@ export class E2BFilesystem extends MastraFilesystem {
         if (error instanceof StaleFileError) {
           throw error;
         }
-        if (!this.isNotFound(error)) {
+        if (!this.missing(error)) {
           throw error;
         }
       }
     }
 
     await this.e2b(() =>
-      this.sandbox.e2b.files.write(filePath, this.toE2BContent(content))
+      this.sandbox.e2b.files.write(filePath, this.e2bContent(content))
     );
   }
 
@@ -177,7 +177,7 @@ export class E2BFilesystem extends MastraFilesystem {
     await this.e2b(() =>
       this.sandbox.e2b.files.write(
         filePath,
-        this.toE2BContent(
+        this.e2bContent(
           Buffer.concat([Buffer.from(current), Buffer.from(content)])
         )
       )
@@ -201,9 +201,9 @@ export class E2BFilesystem extends MastraFilesystem {
       if (error instanceof IsDirectoryError) {
         throw error;
       }
-      if (this.isNotFound(error)) {
+      if (this.missing(error)) {
         if (!options?.force) {
-          throw this.withCause(new FileNotFoundError(inputPath), error);
+          throw this.cause(new FileNotFoundError(inputPath), error);
         }
         return;
       }
@@ -239,14 +239,14 @@ export class E2BFilesystem extends MastraFilesystem {
         this.sandbox.e2b.files.read(srcPath, { format: 'bytes' })
       );
       await this.e2b(() =>
-        this.sandbox.e2b.files.write(destPath, this.toE2BContent(content))
+        this.sandbox.e2b.files.write(destPath, this.e2bContent(content))
       );
     } catch (error) {
       if (error instanceof IsDirectoryError) {
         throw error;
       }
-      if (this.isNotFound(error)) {
-        throw this.withCause(new FileNotFoundError(src), error);
+      if (this.missing(error)) {
+        throw this.cause(new FileNotFoundError(src), error);
       }
       throw error;
     }
@@ -272,8 +272,8 @@ export class E2BFilesystem extends MastraFilesystem {
     try {
       await this.e2b(() => this.sandbox.e2b.files.rename(srcPath, destPath));
     } catch (error) {
-      if (this.isNotFound(error)) {
-        throw this.withCause(new FileNotFoundError(src), error);
+      if (this.missing(error)) {
+        throw this.cause(new FileNotFoundError(src), error);
       }
       throw error;
     }
@@ -288,7 +288,7 @@ export class E2BFilesystem extends MastraFilesystem {
     const dirPath = this.resolve(inputPath);
 
     if (options?.recursive === false) {
-      await this.assertParentDirectory(dirPath, inputPath);
+      await this.assertParent({ filePath: dirPath, inputPath });
     }
 
     try {
@@ -302,7 +302,7 @@ export class E2BFilesystem extends MastraFilesystem {
       if (error instanceof FileExistsError) {
         throw error;
       }
-      if (!this.isNotFound(error)) {
+      if (!this.missing(error)) {
         throw error;
       }
     }
@@ -333,9 +333,9 @@ export class E2BFilesystem extends MastraFilesystem {
       ) {
         throw error;
       }
-      if (this.isNotFound(error)) {
+      if (this.missing(error)) {
         if (!options?.force) {
-          throw this.withCause(new DirectoryNotFoundError(inputPath), error);
+          throw this.cause(new DirectoryNotFoundError(inputPath), error);
         }
         return;
       }
@@ -391,8 +391,8 @@ export class E2BFilesystem extends MastraFilesystem {
       if (error instanceof NotDirectoryError) {
         throw error;
       }
-      if (this.isNotFound(error)) {
-        throw this.withCause(new DirectoryNotFoundError(inputPath), error);
+      if (this.missing(error)) {
+        throw this.cause(new DirectoryNotFoundError(inputPath), error);
       }
       throw error;
     }
@@ -412,8 +412,8 @@ export class E2BFilesystem extends MastraFilesystem {
     try {
       info = await this.e2b(() => this.sandbox.e2b.files.getInfo(filePath));
     } catch (error) {
-      if (this.isNotFound(error)) {
-        throw this.withCause(new FileNotFoundError(inputPath), error);
+      if (this.missing(error)) {
+        throw this.cause(new FileNotFoundError(inputPath), error);
       }
       throw error;
     }
@@ -468,10 +468,13 @@ export class E2BFilesystem extends MastraFilesystem {
     }
   }
 
-  private async assertParentDirectory(
-    filePath: string,
-    inputPath: string
-  ): Promise<void> {
+  private async assertParent({
+    filePath,
+    inputPath,
+  }: {
+    filePath: string;
+    inputPath: string;
+  }): Promise<void> {
     const parentPath = path.posix.dirname(filePath);
     try {
       const info = await this.e2b(() =>
@@ -484,8 +487,8 @@ export class E2BFilesystem extends MastraFilesystem {
       if (error instanceof NotDirectoryError) {
         throw error;
       }
-      if (this.isNotFound(error)) {
-        throw this.withCause(
+      if (this.missing(error)) {
+        throw this.cause(
           new DirectoryNotFoundError(path.posix.dirname(inputPath)),
           error
         );
@@ -494,7 +497,7 @@ export class E2BFilesystem extends MastraFilesystem {
     }
   }
 
-  private toE2BContent(content: FileContent): string | ArrayBuffer {
+  private e2bContent(content: FileContent): string | ArrayBuffer {
     if (typeof content === 'string') {
       return content;
     }
@@ -509,7 +512,7 @@ export class E2BFilesystem extends MastraFilesystem {
     return this.sandbox.retryOnDead(operation);
   }
 
-  private isNotFound(error: unknown): boolean {
+  private missing(error: unknown): boolean {
     return (
       error instanceof E2BFileNotFoundError ||
       (error instanceof Error && error.name === 'FileNotFoundError') ||
@@ -517,7 +520,7 @@ export class E2BFilesystem extends MastraFilesystem {
     );
   }
 
-  private withCause<T extends Error>(error: T, cause: unknown): T {
+  private cause<T extends Error>(error: T, cause: unknown): T {
     error.cause = cause;
     return error;
   }
