@@ -27,8 +27,13 @@ async function resolveChannelAndThread(resolved: {
 
 export const postMessageTool = createTool({
   id: 'post_message',
-  description:
-    'Post a markdown message to the current Slack thread, or to a specific thread, channel, or user.',
+  description: `Post a markdown message to the current Slack thread, or to a specific thread, channel, or user.
+
+Defaults to the current thread; pass target only when posting somewhere else. Your streamed reply already covers the current thread, so avoid posting the same message twice.
+
+Every post automatically shows who requested it as the Slack display name, do not add that yourself in the message text; there is no way to override or customize this.
+
+Errors: channel_not_found usually means the bot isn't a member of that private channel; not_in_channel means it hasn't joined yet. Either way, tell the user to invite the bot there.`,
   inputSchema: z.object({
     target: targetSchema
       .optional()

@@ -8,7 +8,6 @@ export const deleteScheduledTaskTool = createTool({
   inputSchema: z.object({
     id: z.string().min(1).describe('Scheduled task id.'),
   }),
-  requireApproval: true,
   execute: async ({ id }, context) => {
     const service = schedules(context);
     const scope = taskScope(context);

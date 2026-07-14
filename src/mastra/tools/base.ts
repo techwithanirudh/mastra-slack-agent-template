@@ -24,7 +24,6 @@ export const baseTools = {
   post_message: slackTools.post_message,
   grep: grepTool,
   wait: waitTool,
-  generate_image: generateImageTool,
 };
 
 export const deferredTools = {
@@ -32,6 +31,7 @@ export const deferredTools = {
   get_channel_info: slackTools.get_channel_info,
   get_slack_file: slackTools.get_slack_file,
   leave_channel: slackTools.leave_channel,
+  generate_image: generateImageTool,
   ...canvasTools,
   ...mcpTools,
 };

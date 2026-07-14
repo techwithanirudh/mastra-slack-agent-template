@@ -1,5 +1,4 @@
 import { createCanvasTool, createChannelCanvasTool } from './create';
-import { deleteCanvasTool } from './delete';
 import { editCanvasTool } from './edit';
 import { listCanvasesTool } from './list';
 import { readCanvasTool } from './read';
@@ -11,6 +10,5 @@ export const canvasTools = {
   list_canvases: listCanvasesTool,
   read_canvas: readCanvasTool,
   edit_canvas: editCanvasTool,
-  delete_canvas: deleteCanvasTool,
   lookup_canvas_sections: lookupCanvasSectionsTool,
 };

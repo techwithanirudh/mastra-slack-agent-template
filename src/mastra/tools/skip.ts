@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const skipTool = createTool({
   id: 'skip',
   description:
-    'End the turn without replying. Use when the message needs no response from you, for example when it is not addressed to you, is a side conversation between other people, or someone is showing your output to a third party. Prefer this over writing a bracketed status note or a filler acknowledgement.',
+    'End this turn silently when no response is needed. Call this tool by itself with no streamed text and no other tool calls.',
   inputSchema: z.object({
     reason: z
       .string()

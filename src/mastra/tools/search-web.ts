@@ -5,7 +5,7 @@ import { exa } from '../lib/exa';
 export const searchWebTool = createTool({
   id: 'search_web',
   description:
-    'Search the web for current information, documentation, news, and facts. For unfamiliar names, acronyms, projects, links, screenshots, or "what is X" questions, also use search_slack when available before answering because the reference may be internal.',
+    'Search the web for current information, documentation, news, and facts. Do not guess at recent or external facts. For unfamiliar names, acronyms, projects, links, screenshots, or "what is X" questions, also use search_slack when available before answering because the reference may be internal.',
   inputSchema: z.object({
     query: z
       .string()

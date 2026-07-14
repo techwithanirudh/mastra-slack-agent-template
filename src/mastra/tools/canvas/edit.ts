@@ -51,7 +51,6 @@ export const editCanvasTool = createTool({
     canvasId: canvasIdSchema,
     changes: z.tuple([canvasChangeSchema]).rest(canvasChangeSchema),
   }),
-  requireApproval: true,
   execute: async ({ canvasId, changes }) => {
     try {
       await slack.webClient.canvases.edit({
