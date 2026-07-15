@@ -4,12 +4,13 @@ import { slack } from '../../chat/client';
 import { channelContext } from '../../lib/context';
 import { rawId } from '../../lib/ids';
 import { parseSlackMessageUrl } from '../../lib/slack-message';
+import { input, output } from '../../types/tools/index';
 
 export const reactTool = createTool({
   id: 'react',
   description:
     'Add or remove an emoji reaction on a Slack message by current channel timestamp, channel/message id, or message URL.',
-  inputSchema: z.object({
+  inputSchema: input({
     channelId: z
       .string()
       .optional()
@@ -27,6 +28,19 @@ export const reactTool = createTool({
     action: z.enum(['add', 'remove']).default('add'),
     emoji: z.string().min(1).describe('Emoji name without colons.'),
   }),
+  outputSchema: output({
+    action: z.enum(['add', 'remove']),
+    channelId: z.string(),
+    messageId: z.string(),
+    emoji: z.string(),
+  }),
+  transform: {
+    display: {
+      output: ({ output }) => ({
+        summary: `${output?.action === 'remove' ? 'Removed' : 'Added'} :${output?.emoji ?? ''}:`,
+      }),
+    },
+  },
   execute: async (
     { channelId, messageId, url, action, emoji: emojiInput },
     context
@@ -55,15 +69,19 @@ export const reactTool = createTool({
     if (action === 'remove') {
       await slack.webClient.reactions.remove(request);
       return {
-        success: true,
-        message: `Removed :${emoji}: from ${target.channel} ${target.ts}.`,
+        action,
+        channelId: `slack:${target.channel}`,
+        messageId: target.ts,
+        emoji,
       };
     }
 
     await slack.webClient.reactions.add(request);
     return {
-      success: true,
-      message: `Added :${emoji}: to ${target.channel} ${target.ts}.`,
+      action,
+      channelId: `slack:${target.channel}`,
+      messageId: target.ts,
+      emoji,
     };
   },
 });

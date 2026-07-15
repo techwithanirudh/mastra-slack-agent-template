@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'node_modules/@mastra/core/dist');
-const PATCH_FILE = 'patches/@mastra+core@1.50.1.patch';
+const PATCH_FILE = 'patches/@mastra+core@1.51.0.patch';
 
 const SIGNATURES = [
   'invocation.result && typeof invocation.result === "object" && typeof invocation.result.data === "string" && typeof invocation.result.mediaType === "string"',

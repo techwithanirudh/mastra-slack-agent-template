@@ -1,8 +1,10 @@
 import { getChannelInfoTool } from './get-channel-info';
+import { getPermalinkTool } from './get-permalink';
 import { getSlackFileTool } from './get-slack-file';
 import { getUserTool } from './get-user';
 import { leaveChannelTool } from './leave-channel';
 import { leaveThreadTool } from './leave-thread';
+import { listChannelsTool } from './list-channels';
 import { listThreadsTool } from './list-threads';
 import { postMessageTool } from './post-message';
 import { reactTool } from './react';
@@ -18,6 +20,8 @@ export const slackTools = {
   list_threads: listThreadsTool,
   get_user: getUserTool,
   get_channel_info: getChannelInfoTool,
+  get_permalink: getPermalinkTool,
+  list_channels: listChannelsTool,
   get_slack_file: getSlackFileTool,
   upload_file: uploadFileTool,
   post_message: postMessageTool,

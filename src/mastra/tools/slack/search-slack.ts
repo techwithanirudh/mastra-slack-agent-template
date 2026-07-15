@@ -4,6 +4,7 @@ import { slack } from '../../chat/client';
 import { chat } from '../../chat/instance';
 import { threadState } from '../../chat/state';
 import { channelContext } from '../../lib/context';
+import { input, output } from '../../types/tools/index';
 
 function truncateText({
   text,
@@ -79,7 +80,7 @@ export const searchSlackTool = createTool({
   id: 'search_slack',
   description:
     'Search Slack messages for past conversations, decisions, links, people, or internal references outside the current thread. Use specific queries (keywords, names, channels, dates). For from:/to:, use the Slack username, not a raw user id. For unfamiliar references and "what is X" questions, pair this with search_web and compare results before answering. If unavailable because the user did not @mention you, say you need an @mention to check Slack history.',
-  inputSchema: z.object({
+  inputSchema: input({
     query: z
       .string()
       .min(1)
@@ -92,17 +93,37 @@ export const searchSlackTool = createTool({
       .optional()
       .describe('Cursor from a previous result page.'),
   }),
+  outputSchema: output({
+    messages: z.array(
+      z.strictObject({
+        author: z.string().optional(),
+        userId: z.string().optional(),
+        channelId: z.string().optional(),
+        channelName: z.string().optional(),
+        text: z.string(),
+        before: z.array(z.string()),
+        after: z.array(z.string()),
+        permalink: z.string().optional(),
+      })
+    ),
+    nextCursor: z.string().optional(),
+  }),
+  transform: {
+    display: {
+      output: ({ input, output }) => ({
+        summary: `Found ${output?.messages.length ?? 0} Slack messages for "${input?.query ?? ''}"`,
+      }),
+    },
+  },
   execute: async ({ query, cursor }, context) => {
     const { threadId } = channelContext(context?.requestContext);
     const thread = threadId ? chat().thread(threadId) : undefined;
     const state = await threadState(thread);
     const token = state?.searchToken;
     if (!(thread && token)) {
-      return {
-        success: false,
-        message:
-          'No fresh Slack search token for this thread. Slack only provides a short-lived one when the user messages or mentions the bot, so ask them to mention you and try again.',
-      };
+      throw new Error(
+        'No fresh Slack search token for this thread. Ask the user to mention the bot in a new message, then search again.'
+      );
     }
 
     let response: z.infer<typeof searchResponseSchema>;
@@ -124,22 +145,18 @@ export const searchSlackTool = createTool({
         reason.includes('token_expired')
       ) {
         await thread.setState({ searchToken: undefined });
-        return {
-          success: false,
-          message:
-            'The Slack search token for this thread expired. Ask the user to mention the bot in a new message, then search again.',
-        };
+        throw new Error(
+          'The Slack search token expired. Ask the user to mention the bot in a new message, then search again.',
+          { cause: error }
+        );
       }
       throw error;
     }
 
     const messages = response.results?.messages ?? [];
     return {
-      success: true,
       messages,
-      count: messages.length,
       nextCursor: response.response_metadata?.next_cursor || undefined,
-      message: `Slack search found ${messages.length} message${messages.length === 1 ? '' : 's'} for "${query}".`,
     };
   },
 });

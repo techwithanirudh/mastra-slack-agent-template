@@ -1,6 +1,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { exa } from '../lib/exa';
+import { input, output } from '../types/tools/index';
 
 export const fetchUrlTool = createTool({
   id: 'fetch_url',
@@ -12,9 +13,21 @@ This extracts readable article content, so it fails on anything that isn't a pla
 - Slack URLs; use Slack tools instead.
 - Search result or directory listing pages.
 - Raw/binary file downloads: PDFs, images, zips.`,
-  inputSchema: z.object({
+  inputSchema: input({
     url: z.url().describe('The exact URL to fetch.'),
   }),
+  outputSchema: output({
+    url: z.url(),
+    title: z.string(),
+    text: z.string(),
+  }),
+  transform: {
+    display: {
+      output: ({ output }) => ({
+        summary: output?.title ?? output?.url ?? 'URL fetched',
+      }),
+    },
+  },
   execute: async ({ url }) => {
     const [result] = (
       await exa.getContents([url], {
@@ -23,17 +36,12 @@ This extracts readable article content, so it fails on anything that isn't a pla
       })
     ).results;
     if (!result) {
-      return {
-        success: false,
-        message: `Could not fetch content from ${url}.`,
-      };
+      throw new Error(`Could not fetch content from ${url}.`);
     }
     return {
-      success: true,
       url: result.url,
       title: result.title ?? result.url,
       text: result.text ?? '',
-      message: `Fetched ${result.text?.length ?? 0} characters from ${result.url}.`,
     };
   },
 });

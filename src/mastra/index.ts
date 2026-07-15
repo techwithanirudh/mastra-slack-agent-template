@@ -16,6 +16,7 @@ import { summarizer } from './agents/summarizer';
 import { registerEvents } from './chat/events';
 import { setChat } from './chat/instance';
 import { logger } from './lib/logger';
+import { scheduledTaskMetadataSchema } from './types/tools/index';
 
 process.on('unhandledRejection', (error: unknown) => {
   logger.error('[process] unhandled rejection', { error });
@@ -31,7 +32,22 @@ export const mastra = new Mastra({
       const current = await runtime.schedules.get(schedule.id);
       if (current?.metadata?.kind === 'wait') {
         await runtime.schedules.delete(schedule.id);
+        return;
       }
+      const metadata = scheduledTaskMetadataSchema.safeParse(
+        current?.metadata
+      ).data;
+      if (!metadata?.maxRuns) {
+        return;
+      }
+      const runsCompleted = (metadata.runsCompleted ?? 0) + 1;
+      if (runsCompleted >= metadata.maxRuns) {
+        await runtime.schedules.delete(schedule.id);
+        return;
+      }
+      await runtime.schedules.update(schedule.id, {
+        metadata: { ...metadata, runsCompleted },
+      });
     },
   },
   storage: new MastraCompositeStore({

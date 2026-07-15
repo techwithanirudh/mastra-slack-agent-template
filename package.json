@@ -11,6 +11,7 @@
     "postbuild": "bun run scripts/postbuild.ts && cd .mastra/output && bun install",
     "start": "mastra start",
     "build:template": "bun run src/mastra/workspace/build-template.ts",
+    "migrate:agent": "bun run scripts/migrate-agent.ts",
     "typecheck": "tsc --noEmit",
     "check": "ultracite check .",
     "check:spelling": "cspell -c .cspell.jsonc --no-progress --no-summary --no-must-find-files --unique --cache .",
@@ -21,28 +22,28 @@
     "postinstall": "bun run scripts/verify-patches.ts"
   },
   "patchedDependencies": {
-    "@mastra/core@1.50.1": "patches/@mastra+core@1.50.1.patch"
+    "@mastra/core@1.51.0": "patches/@mastra+core@1.51.0.patch"
   },
   "overrides": {
-    "chat": "^4.32.0"
+    "chat": "^4.34.0"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.0",
     "@ai-sdk/provider": "^3.0.0",
-    "@chat-adapter/slack": "^4.32.0",
-    "@chat-adapter/state-pg": "^4.32.0",
-    "@mastra/core": "^1.50.1",
+    "@chat-adapter/slack": "^4.34.0",
+    "@chat-adapter/state-pg": "^4.34.0",
+    "@mastra/core": "^1.51.0",
     "@mastra/duckdb": "^1.5.1",
-    "@mastra/e2b": "0.5.1",
+    "@mastra/e2b": "0.6.0",
     "@mastra/loggers": "1.2.0",
-    "@mastra/mcp": "^1.13.1",
-    "@mastra/memory": "^1.22.2",
-    "@mastra/observability": "1.16.0",
-    "@mastra/pg": "1.15.1",
+    "@mastra/mcp": "^1.14.0",
+    "@mastra/memory": "^1.23.0",
+    "@mastra/observability": "1.16.1",
+    "@mastra/pg": "1.16.0",
     "@openrouter/ai-sdk-provider": "^2.10.0",
     "@t3-oss/env-core": "^0.13.11",
     "ai": "^6.0.219",
-    "chat": "^4.32.0",
+    "chat": "^4.34.0",
     "dotenv": "^17.4.2",
     "e2b": "^2.31.0",
     "exa-js": "^2.16.0",
@@ -59,7 +60,7 @@
     "@types/node": "^26.1.1",
     "cspell": "^10.0.1",
     "lefthook": "^2.1.9",
-    "mastra": "^1.18.2",
+    "mastra": "^1.19.0",
     "ultracite": "7.9.0"
   },
   "peerDependencies": {

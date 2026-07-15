@@ -87,14 +87,12 @@ export function formatResult(event: ToolDisplayEvent): {
   output: string;
 } {
   const result = 'result' in event ? event.result : undefined;
-  const failed =
-    ('isError' in event && event.isError) ||
-    (isRecord(result) && result.success === false);
+  const failed = 'isError' in event && event.isError;
   const output = format({
     max: config.maxOutput,
     value: isRecord(result)
-      ? (result.text ??
-        result.message ??
+      ? (result.summary ??
+        result.text ??
         result.output ??
         result.stdout ??
         result.stderr ??

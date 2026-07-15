@@ -37,6 +37,7 @@ export const exploreAgent = new Agent({
     list_threads: slackTools.list_threads,
     get_user: slackTools.get_user,
     get_channel_info: slackTools.get_channel_info,
+    get_slack_file: slackTools.get_slack_file,
   },
   inputProcessors: [
     new TokenLimiterProcessor({
@@ -63,6 +64,7 @@ export const exploreAgent = new Agent({
       'list_threads',
       'get_user',
       'get_channel_info',
+      'get_slack_file',
     ],
     modelSettings: { maxOutputTokens: 16_384 },
     stopWhen: stepCountIs(400),

@@ -5,7 +5,3 @@ export function rawId(id: string): string {
 export function chatChannelId(id: string): string {
   return `slack:${rawId(id)}`;
 }
-
-export function chatThreadId(id: string): string {
-  return id.startsWith('slack:') ? id : `slack:${id}`;
-}

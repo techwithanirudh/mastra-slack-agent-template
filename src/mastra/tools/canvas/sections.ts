@@ -1,38 +1,46 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { slack } from '../../chat/client';
+import { input, output } from '../../types/tools/index';
 import { canvasIdSchema } from './utils';
 
 export const lookupCanvasSectionsTool = createTool({
   id: 'lookup_canvas_sections',
   description:
     'Find Slack canvas sections by header type and/or contained text before editing.',
-  inputSchema: z
-    .object({
-      canvasId: canvasIdSchema,
-      sectionTypes: z
-        .tuple([z.enum(['any_header', 'h1', 'h2', 'h3'])])
-        .rest(z.enum(['any_header', 'h1', 'h2', 'h3']))
-        .optional(),
-      containsText: z.string().min(1).optional(),
-    })
-    .refine(({ sectionTypes, containsText }) => sectionTypes || containsText, {
-      message: 'Provide sectionTypes, containsText, or both.',
-    }),
+  inputSchema: input({
+    canvasId: canvasIdSchema,
+    sectionTypes: z
+      .array(z.enum(['any_header', 'h1', 'h2', 'h3']))
+      .min(1)
+      .optional(),
+    containsText: z.string().min(1).optional(),
+  }).refine(({ sectionTypes, containsText }) => sectionTypes || containsText, {
+    message: 'Provide sectionTypes, containsText, or both.',
+  }),
+  outputSchema: output({
+    canvasId: z.string(),
+    sections: z.array(z.unknown()),
+  }),
+  transform: {
+    display: {
+      output: ({ input, output }) => ({
+        summary: `Found ${output?.sections.length ?? 0} sections in canvas ${input?.canvasId ?? output?.canvasId ?? ''}`,
+      }),
+    },
+  },
   execute: async ({ canvasId, sectionTypes, containsText }) => {
-    if (sectionTypes) {
+    if (sectionTypes?.length) {
       const response = await slack.webClient.canvases.sections.lookup({
         canvas_id: canvasId,
         criteria: {
-          section_types: sectionTypes,
+          section_types: [sectionTypes[0], ...sectionTypes.slice(1)],
           ...(containsText ? { contains_text: containsText } : {}),
         },
       });
       return {
-        success: true,
         canvasId,
         sections: response.sections ?? [],
-        message: `Found ${response.sections?.length ?? 0} matching sections.`,
       };
     }
     if (!containsText) {
@@ -43,10 +51,8 @@ export const lookupCanvasSectionsTool = createTool({
       criteria: { contains_text: containsText },
     });
     return {
-      success: true,
       canvasId,
       sections: response.sections ?? [],
-      message: `Found ${response.sections?.length ?? 0} matching sections.`,
     };
   },
 });

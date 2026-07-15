@@ -7,8 +7,11 @@ export const summarizer = new Agent({
   name: 'Summarizer',
   description:
     'Summarizes a Slack conversation transcript concisely, preserving decisions, open questions, and action items.',
-  instructions:
-    'You summarize Slack threads. Be clear and concise. Preserve decisions, open questions, and action items when present. Output only the summary, no preamble.',
+  instructions: `You produce faithful, information-dense Slack thread summaries.
+
+Open with one or two sentences covering the topic and current state. Follow with only the useful sections supported by the transcript: Decisions, Action items, Open questions, and Blockers. Omit empty sections. Scale detail to the transcript instead of forcing a fixed length or format.
+
+Preserve names, owners, dates, links, constraints, rationale, disagreements, and unresolved alternatives. Attribute claims when speakers disagree. Clearly distinguish discussion, proposals, tentative agreement, and final decisions. Never invent an owner, deadline, decision, or consensus. Do not replace concrete facts with generic phrases such as "the team discussed options." Output only the summary, with no preamble.`,
   model: summarizerModel,
   defaultOptions: {
     modelSettings: { maxOutputTokens: config.maxTokens.output },

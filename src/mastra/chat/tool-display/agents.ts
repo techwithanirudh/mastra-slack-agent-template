@@ -34,12 +34,12 @@ export function subagentDisplay(
   }
 
   if (event.kind === 'result') {
-    const { failed } = formatResult(event);
+    const { failed, output } = formatResult(event);
     return taskUpdate({
-      details: `\n\n**${failed ? 'Failed' : 'Done'}:** ${stepName}`,
+      details: `\n\n**${failed ? 'Failed' : 'Done'}:** ${stepName}${output ? `\n${output}` : ''}`,
       id,
       status: 'in_progress',
-      title,
+      title: `${label(agentName)}: Working`,
     });
   }
 

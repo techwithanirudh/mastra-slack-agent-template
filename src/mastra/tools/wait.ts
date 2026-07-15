@@ -2,24 +2,28 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { agent as agentConfig } from '../config';
 import { taskContext } from '../lib/memory';
+import { input, output } from '../types/tools/index';
 import { isAgentSchedule } from './scheduled-tasks/queries';
 
 export const waitTool = createTool({
   id: 'wait',
   description:
-    'Pause the conversation and automatically resume it later, without blocking. Use to space out polling or give a background job or external event time to progress. Call this last, say what you are waiting for, then stop; you will be woken up automatically when the wait is over. Calling it always ends your turn, the same as skip. Max 300 seconds; for a longer or recurring wait, use create_scheduled_task instead.',
-  inputSchema: z.object({
-    seconds: z
-      .number()
-      .int()
-      .min(1)
-      .max(300)
-      .describe('How many seconds to wait (1-300).'),
+    'Pause the conversation and automatically resume it later, without blocking. Use for one-time delays, spaced-out polling, or giving a background job or external event time to progress. Call this last, say what you are waiting for, then stop; you will be woken up automatically when the wait is over. Calling it always ends your turn, the same as skip. For recurring work, use create_scheduled_task instead.',
+  inputSchema: input({
+    seconds: z.number().int().min(1).describe('How many seconds to wait.'),
     reason: z
       .string()
       .min(1)
       .describe('What you are waiting for, and what to do once it resumes.'),
   }),
+  outputSchema: output({ seconds: z.number() }),
+  transform: {
+    display: {
+      output: ({ input, output }) => ({
+        summary: `Waiting ${output?.seconds ?? 0} seconds for ${input?.reason ?? 'the next check'}`,
+      }),
+    },
+  },
   execute: async ({ seconds, reason }, context) => {
     const schedules = context.mastra?.schedules;
     if (!schedules) {
@@ -46,7 +50,12 @@ export const waitTool = createTool({
     );
 
     const fireAt = new Date(Date.now() + seconds * 1000);
-    const cron = `${fireAt.getUTCSeconds()} ${fireAt.getUTCMinutes()} ${fireAt.getUTCHours()} ${fireAt.getUTCDate()} ${fireAt.getUTCMonth() + 1} *`;
+    if (Number.isNaN(fireAt.getTime()) || fireAt.getUTCFullYear() > 9999) {
+      throw new Error(
+        'That wait is outside the scheduler supported date range.'
+      );
+    }
+    const cron = `${fireAt.getUTCSeconds()} ${fireAt.getUTCMinutes()} ${fireAt.getUTCHours()} ${fireAt.getUTCDate()} ${fireAt.getUTCMonth() + 1} * ${fireAt.getUTCFullYear()}`;
 
     await schedules.create({
       agentId: agentConfig.id,
@@ -66,9 +75,7 @@ export const waitTool = createTool({
     });
 
     return {
-      success: true,
       seconds,
-      message: `Waiting ${seconds}s for ${reason}. This turn is ending now; I'll continue automatically once the wait is over.`,
     };
   },
 });

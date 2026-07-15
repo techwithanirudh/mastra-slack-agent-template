@@ -41,6 +41,12 @@ export class SlackAgentAdapter extends SlackAdapter {
       const known = this.recipients.get(threadId);
       if (!(known?.userId === userId && known.teamId === teamId)) {
         const recipient: Recipient = { userId, teamId };
+        if (!known && this.recipients.size >= 10_000) {
+          const oldestThreadId = this.recipients.keys().next().value;
+          if (oldestThreadId) {
+            this.recipients.delete(oldestThreadId);
+          }
+        }
         this.recipients.set(threadId, recipient);
         chat
           .getState()

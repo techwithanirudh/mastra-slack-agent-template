@@ -1,5 +1,9 @@
 import type { AgentSchedule } from '@mastra/core/schedules';
 import { z } from 'zod';
+import {
+  scheduledTaskMetadataSchema,
+  scheduledTaskSchema,
+} from '../../types/tools/index';
 
 export const scheduledTaskKind = 'scheduled-task';
 
@@ -13,11 +17,12 @@ export function formatTask({
 }: {
   task: AgentSchedule;
   currentResourceId?: string;
-}): Record<string, unknown> {
+}): z.infer<typeof scheduledTaskSchema> {
   const createdIn = taskCreatedInSchema.safeParse(
     task.metadata?.createdIn
   ).data;
-  return {
+  const metadata = scheduledTaskMetadataSchema.safeParse(task.metadata).data;
+  return scheduledTaskSchema.parse({
     id: task.id,
     name: task.name,
     status: task.status,
@@ -28,10 +33,12 @@ export function formatTask({
       ? new Date(task.lastFireAt).toISOString()
       : undefined,
     threadId: createdIn?.threadId ?? task.threadId,
-    task: task.metadata?.task,
-    createdBy: task.metadata?.createdBy,
+    task: metadata?.task,
+    createdBy: metadata?.createdBy,
+    maxRuns: metadata?.maxRuns,
+    runsCompleted: metadata?.runsCompleted,
     canManage: currentResourceId
       ? task.resourceId === currentResourceId
       : undefined,
-  };
+  });
 }

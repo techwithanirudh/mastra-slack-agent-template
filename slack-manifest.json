@@ -14,8 +14,8 @@
       "display_name": "Mastra Agent",
       "always_online": true
     },
-    "assistant_view": {
-      "assistant_description": "Your AI assistant for Slack. Searches the web, writes and runs code, generates images, browses websites, manages scheduled tasks, and more."
+    "agent_view": {
+      "agent_description": "Your AI assistant for Slack. Searches the web, writes and runs code, generates images, browses websites, manages scheduled tasks, and more."
     }
   },
   "oauth_config": {
@@ -53,10 +53,9 @@
   "settings": {
     "event_subscriptions": {
       "bot_events": [
+        "app_context_changed",
         "app_home_opened",
         "app_mention",
-        "assistant_thread_context_changed",
-        "assistant_thread_started",
         "message.channels",
         "message.groups",
         "message.im",

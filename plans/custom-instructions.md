@@ -161,13 +161,7 @@ guard, once `ctx.userId`/`ctx.platform` are available (they already are, via
 unknown>`, per `@chat-adapter/slack`'s
 `publishHomeView(userId: string, view: Record<string, unknown>):
 Promise<void>`), not Chat SDK's `Card` JSX, App Home has no cross-platform
-equivalent, so this is inherently Slack-only. The view currently ends in:
-```ts
-{ type: 'context', elements: [{ type: 'mrkdwn', text: 'More settings coming soon.' }] }
-```
-(`chat/events.ts:70-73`), and `TODO.md:52` explicitly names this as the
-intended home for "a tool-visibility toggle" later. This is the anchor point
-for a settings button.
+equivalent, so this is inherently Slack-only.
 
 ## Design
 

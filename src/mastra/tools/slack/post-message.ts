@@ -6,6 +6,7 @@ import { chat } from '../../chat/instance';
 import { resolveTarget, targetSchema } from '../../chat/target';
 import { channelContext } from '../../lib/context';
 import { rawId } from '../../lib/ids';
+import { input, output } from '../../types/tools/index';
 import { joinChannel } from './utils';
 
 const markdownConverter = new SlackFormatConverter();
@@ -31,15 +32,26 @@ export const postMessageTool = createTool({
 
 Defaults to the current thread; pass target only when posting somewhere else. Your streamed reply already covers the current thread, so avoid posting the same message twice.
 
-Every post automatically shows who requested it as the Slack display name, do not add that yourself in the message text; there is no way to override or customize this.
+Every post automatically uses the requester's Slack avatar and labels the sender as "Name [mastra agent]". Do not add that attribution yourself in the message text; there is no way to override or customize it.
 
 Errors: channel_not_found usually means the bot isn't a member of that private channel; not_in_channel means it hasn't joined yet. Either way, tell the user to invite the bot there.`,
-  inputSchema: z.object({
+  inputSchema: input({
     target: targetSchema
       .optional()
       .describe('Optional destination. Defaults to the current thread.'),
     message: z.string().min(1).describe('Markdown message body.'),
   }),
+  outputSchema: output({
+    messageId: z.string(),
+    threadId: z.string().optional(),
+  }),
+  transform: {
+    display: {
+      output: ({ output }) => ({
+        summary: `Posted message ${output?.messageId ?? ''}`,
+      }),
+    },
+  },
   requireApproval: true,
   execute: async ({ target, message }, context) => {
     const ctx = channelContext(context?.requestContext);
@@ -62,19 +74,26 @@ Errors: channel_not_found usually means the bot isn't a member of that private c
             .catch(() => null)
         : null;
       const requester = requesterUser?.userName ?? ctx.userName;
-      const name = ctx.botUserName ?? 'bot';
-      const username = requester ? `${requester} [${name}]` : name;
+      const username = requester
+        ? `${requester} [mastra agent]`
+        : 'Mastra Agent';
       const sent = await slack.webClient.chat.postMessage({
         channel,
         ...(threadTs ? { thread_ts: threadTs } : {}),
         ...markdownConverter.toSlackPayload({ markdown: message }),
+        ...(requesterUser?.avatarUrl
+          ? { icon_url: requesterUser.avatarUrl }
+          : {}),
         username,
       });
+      if (!sent.ts) {
+        throw new Error('Slack posted the message without returning its id.');
+      }
       return {
-        success: true,
         messageId: sent.ts,
-        threadId: threadTs,
-        message: `Posted to ${resolved.type} ${resolved.id} as "${username}".`,
+        threadId: threadTs
+          ? slack.encodeThreadId({ channel, threadTs })
+          : undefined,
       };
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);

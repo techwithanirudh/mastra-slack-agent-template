@@ -50,11 +50,7 @@ export const content = {
           type: 'mrkdwn',
           text: '*How to start*\nOpen a direct message and just ask, or @mention me in a channel. In a thread, keep replying to steer me without starting over.',
         },
-      },
-      {
-        type: 'context',
-        elements: [{ type: 'mrkdwn', text: 'More settings coming soon.' }],
-      },
+      }
     ],
   },
 };

@@ -1,6 +1,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { slack } from '../../chat/client';
+import { input, output } from '../../types/tools/index';
 import { canvasIdSchema } from './utils';
 
 const markdownContentSchema = z.object({
@@ -47,10 +48,18 @@ export const editCanvasTool = createTool({
   id: 'edit_canvas',
   description:
     'Edit a Slack canvas by applying ordered markdown changes: insert, replace, or delete sections. Use lookup_canvas_sections to find section ids first. Canvas mentions use ![](@USER_ID) and ![](#CHANNEL_ID), not <@U123>.',
-  inputSchema: z.object({
+  inputSchema: input({
     canvasId: canvasIdSchema,
     changes: z.tuple([canvasChangeSchema]).rest(canvasChangeSchema),
   }),
+  outputSchema: output({ canvasId: z.string() }),
+  transform: {
+    display: {
+      output: ({ output }) => ({
+        summary: `Edited canvas ${output?.canvasId ?? ''}`,
+      }),
+    },
+  },
   execute: async ({ canvasId, changes }) => {
     try {
       await slack.webClient.canvases.edit({
@@ -67,10 +76,6 @@ export const editCanvasTool = createTool({
       }
       throw error;
     }
-    return {
-      success: true,
-      canvasId,
-      message: `Edited canvas ${canvasId}.`,
-    };
+    return { canvasId };
   },
 });

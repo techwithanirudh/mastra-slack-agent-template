@@ -48,7 +48,7 @@ instead of a manual diff every time.
 
 ## Bugs
 
-- [ ] CRITICAL, contradicts recently shipped work: Slack has deprecated
+- [x] CRITICAL, contradicts recently shipped work: Slack has deprecated
   `assistant_view` on mobile, it does not render there at all. This directly
   undercuts the "switch to assistant_view" work already shipped this session
   (see Recently completed), which removed the old DM-anchor workaround on the
@@ -57,10 +57,11 @@ instead of a manual diff every time.
   `agent_view` manifest feature (per earlier session notes, the pinned
   `@chat-adapter/slack` had zero `agent_view` support at last check, so that
   may mean an adapter upgrade or hand-rolling the event handling again), or
-  another supported path. This has flip-flopped between agent_view and
-  assistant_view multiple times already this session; read the git history and
-  this file's older entries before starting, do not just re-flip it again.
-- [ ] Tool cards stop rendering properly in Slack past roughly 50-60 steps in a
+  another supported path. Resolved after upgrading to
+  `@chat-adapter/slack@4.34.0`, which supports Agent messaging: the manifest
+  uses `agent_view`, subscribes to `app_context_changed`, includes
+  `assistant:write`, and the adapter now runs with `agentView: true`.
+- [x] Tool cards stop rendering properly in Slack past roughly 50-60 steps in a
   turn (reports vary: ~50 for execute/other agents, ~60 reported separately for
   subagents). Likely root cause now found via a live log dump (`mastra dev`
   logs, not `mastra api trace`, that investigation step is superseded): Slack's
@@ -78,16 +79,12 @@ instead of a manual diff every time.
   falling back to buffered text" and still delivers the message, just without
   live updates for that turn, likely explaining the "tool cards stop
   rendering" reports: not lost, just silently downgraded to buffered.
-  Fix candidates, not yet built: (1) patch `@chat-adapter/slack` (this repo
-  already has `patchedDependencies` infra, see `patches/`) to wrap that append
-  call in the same try/catch pattern as the structured-chunk path, so a stale
-  stream degrades gracefully instead of throwing, small and surgical; (2) add a
-  keepalive/heartbeat append during long silent gaps so the stream never goes
-  idle long enough to expire, harder, needs restructuring the `for await`
-  consumption loop with a race against a timer, worth it only if losing live
-  updates on long delegations actually matters given (1) already avoids message
-  loss. Recommendation: do (1) first, it's small and fixes the hard-fail
-  symptom; only reach for (2) if the UX gap still bothers people afterward.
+  Fixed with a `@chat-adapter/slack` patch that catches plain-text append
+  failures and disables further appends for the expired native stream. The
+  adapter continues consuming the response and returns the complete buffered
+  text instead of letting the Slack API error kill the channel stream. A
+  keepalive can still be considered later if preserving live updates during
+  long silent delegations proves worth the extra complexity.
 - [ ] `get_slack_file` throws a false "Downloaded X but expected Y" error for
   canvases specifically, reproduced live (`Downloaded 11 KB but expected 9 KB`
   on a real canvas file id). Root cause confirmed: canvases are live, editable
@@ -244,7 +241,8 @@ instead of a manual diff every time.
   checking email too; decided against it for now. Open concern (Devarsh): code
   mode provisions a sandbox on every call, confirm that cost/latency is
   acceptable before committing to this design, or find a way to reuse/pool
-  sandboxes across calls.
+  sandboxes across calls. The current prototype is preserved on the
+  `feat/code-mode` branch while regular Slack tools remain active here.
 - [ ] Signal subscriptions: let the agent monitor and react to external events
   (GitHub events, AgentMail) instead of only polling on a cron schedule. `wait`
   (shipped, see Recently completed) covers "pause and resume later"; this is

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { env } from '@/env';
 import { slack } from '../../chat/client';
 import { sh } from '../../lib/shell';
+import { input, output } from '../../types/tools/index';
 import { getSandbox } from '../../workspace';
 import { p } from '../../workspace/path';
 
@@ -24,7 +25,7 @@ export const getSlackFileTool = createTool({
   id: 'get_slack_file',
   description:
     'Download a Slack file (upload, snippet, image, any type) into the sandbox so you can read or process it. Takes a Slack file id (e.g. F0123ABCD), which you can get from a message attachment or a Slack file permalink. Not for arbitrary web URLs; use fetch_url for those. Not for reading canvas content, use read_canvas instead; When downloading images, always pass or preserve a useful extension like .png, .jpg, .jpeg, or .webp so read_file can infer the MIME type.',
-  inputSchema: z.object({
+  inputSchema: input({
     file: z
       .string()
       .min(1)
@@ -33,6 +34,19 @@ export const getSlackFileTool = createTool({
       ),
     filename: z.string().optional().describe('Optional name to save it as.'),
   }),
+  outputSchema: output({
+    path: z.string(),
+    filename: z.string(),
+    mimeType: z.string().optional(),
+    size: z.number(),
+  }),
+  transform: {
+    display: {
+      output: ({ output }) => ({
+        summary: output?.filename ?? output?.path ?? 'File downloaded',
+      }),
+    },
+  },
   execute: async ({ file, filename }, context) => {
     if (!context?.requestContext) {
       throw new Error('No workspace context.');
@@ -69,12 +83,10 @@ export const getSlackFileTool = createTool({
     const nextPath = `${path}.next`;
     const mergePath = `${path}.merge`;
     const formatResult = (size: number) => ({
-      success: true,
       path,
       filename: name,
       mimeType: fileInfo?.mimetype,
       size,
-      message: `Downloaded ${name} (${formatBytes(size)}) to ${path} in the sandbox.`,
     });
     const writeResponseBody = async (
       body: ReadableStream<Uint8Array>,

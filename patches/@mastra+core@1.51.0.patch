@@ -1,6 +1,6 @@
---- a/dist/chunk-OE4IEL7C.js
-+++ b/dist/chunk-OE4IEL7C.js
-@@ -2703,12 +2703,28 @@
+--- a/dist/chunk-77JDY5O7.js
++++ b/dist/chunk-77JDY5O7.js
+@@ -2670,12 +2670,28 @@
                if (invocation.result !== void 0) {
                  if (typeof invocation.result === "string") {
                    tokenString += invocation.result;
@@ -29,9 +29,9 @@
            } else {
              tokenString += JSON.stringify(part);
            }
---- a/dist/chunk-CJAAPSS7.cjs
-+++ b/dist/chunk-CJAAPSS7.cjs
-@@ -2734,12 +2734,28 @@
+--- a/dist/chunk-5R7YROFE.cjs
++++ b/dist/chunk-5R7YROFE.cjs
+@@ -2701,12 +2701,28 @@
                if (invocation.result !== void 0) {
                  if (typeof invocation.result === "string") {
                    tokenString += invocation.result;
