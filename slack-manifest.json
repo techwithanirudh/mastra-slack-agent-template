@@ -6,7 +6,7 @@
   },
   "features": {
     "app_home": {
-      "home_tab_enabled": false,
+      "home_tab_enabled": true,
       "messages_tab_enabled": true,
       "messages_tab_read_only_enabled": false
     },
@@ -14,26 +14,8 @@
       "display_name": "Mastra Agent",
       "always_online": true
     },
-    "agent_view": {
-      "agent_description": "Your AI assistant for Slack. Searches the web, writes and runs code, generates images, browses websites, manages reminders and scheduled tasks, and more.",
-      "suggested_prompts": [
-        {
-          "title": "Research with sources",
-          "message": "Research the latest developments in AI agents. Compare at least three reliable sources and give me a concise briefing with links."
-        },
-        {
-          "title": "Build a useful file",
-          "message": "Create a polished weekly planner as an HTML file, verify it in the sandbox, and upload it here."
-        },
-        {
-          "title": "Find Slack decisions",
-          "message": "Search Slack for decisions made in the last seven days and summarize them with links to the original messages."
-        },
-        {
-          "title": "Schedule a check-in",
-          "message": "Ask me for my timezone, then schedule a weekday 9 AM reminder to review my priorities."
-        }
-      ]
+    "assistant_view": {
+      "assistant_description": "Your AI assistant for Slack. Searches the web, writes and runs code, generates images, browses websites, manages scheduled tasks, and more."
     }
   },
   "oauth_config": {
@@ -41,10 +23,13 @@
       "bot": [
         "app_mentions:read",
         "assistant:write",
+        "canvases:read",
+        "canvases:write",
         "channels:history",
         "channels:join",
         "channels:read",
         "chat:write",
+        "chat:write.customize",
         "files:read",
         "files:write",
         "groups:history",
@@ -70,6 +55,8 @@
       "bot_events": [
         "app_home_opened",
         "app_mention",
+        "assistant_thread_context_changed",
+        "assistant_thread_started",
         "message.channels",
         "message.groups",
         "message.im",

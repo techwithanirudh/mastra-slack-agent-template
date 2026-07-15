@@ -31,6 +31,9 @@ async function main(): Promise<void> {
         { noInstallRecommends: true }
       )
       .runCmd([
+        // Empty hooksPath so cloned repos' hooks (lefthook, husky) never run.
+        'mkdir -p /etc/git/disabled-hooks',
+        'git config --system core.hooksPath /etc/git/disabled-hooks',
         'if command -v fdfind >/dev/null 2>&1; then ln -sf "$(command -v fdfind)" /usr/local/bin/fd; fi',
         'apt-get purge -y nodejs nodejs-doc || true',
         'apt-get autoremove -y || true',
@@ -47,12 +50,25 @@ async function main(): Promise<void> {
         'python3 -m pip install --no-cache-dir --break-system-packages --no-user pillow matplotlib numpy pandas requests agentmail',
         'npm install -g agent-browser',
         'bash -lc "yes | agent-browser install --with-deps"',
+        'python3 -m pip install --no-cache-dir --break-system-packages --no-user cloakbrowser',
+        // Wrap agent-browser: its stealth env vars are resolved dynamically, not
+        // static, so they can't be baked into the template's own env.
+        'mv /usr/local/bin/agent-browser /usr/local/bin/agent-browser-real',
+        'python3 -c "from cloakbrowser.download import ensure_binary; ensure_binary()"',
         `chown -R user:user ${config.workdir}`,
       ])
+      .copy('stealth-browser.sh', '/usr/local/bin/agent-browser', {
+        mode: 0o755,
+      })
       .setUser('user')
       .setWorkdir(config.workdir),
     config.template,
-    { apiKey: env.E2B_API_KEY, onBuildLogs: defaultBuildLogger() }
+    {
+      apiKey: env.E2B_API_KEY,
+      cpuCount: 2,
+      memoryMB: 1024,
+      onBuildLogs: defaultBuildLogger(),
+    }
   );
 
   console.log(`[sandbox] built e2b template: ${build.templateId}`);

@@ -19,12 +19,12 @@ export function subagentDisplay(
   }
 
   const [, agentName, toolName] = inner;
-  const id = parentId(event.toolCallId) ?? event.toolCallId;
+  const id = parentToolCallId(event.toolCallId) ?? event.toolCallId;
   const stepName = label(toolName);
   const title = `${label(agentName)}: ${stepName}`;
 
   if (event.kind === 'running') {
-    const input = formatInput(event, 'compact');
+    const input = formatInput({ event, style: 'compact' });
     return taskUpdate({
       details: `\n\n**Running:** ${stepName}${input ? ` (${input})` : ''}`,
       id,
@@ -65,7 +65,7 @@ export function subagentPrompt(event: ToolDisplayEvent): string | undefined {
   }
 }
 
-function parentId(toolCallId: string): string | undefined {
+function parentToolCallId(toolCallId: string): string | undefined {
   const separator = toolCallId.indexOf('::');
   return separator === -1 ? undefined : toolCallId.slice(0, separator);
 }

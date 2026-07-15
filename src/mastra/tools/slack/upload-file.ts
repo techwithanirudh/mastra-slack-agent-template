@@ -2,7 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { resolveTarget, targetSchema } from '../../chat/target';
 import { channelContext } from '../../lib/context';
-import { resolveE2BSandbox } from '../../workspace';
+import { getSandbox } from '../../workspace';
 import { joinChannel } from './utils';
 
 export const uploadFileTool = createTool({
@@ -32,7 +32,7 @@ export const uploadFileTool = createTool({
     if (!context?.requestContext) {
       throw new Error('No workspace context.');
     }
-    const sandbox = await resolveE2BSandbox(context.requestContext);
+    const sandbox = await getSandbox(context.requestContext);
     if (!sandbox) {
       throw new Error('No sandbox available.');
     }
@@ -57,18 +57,23 @@ export const uploadFileTool = createTool({
     }
     const destination = await resolveTarget(resolved);
 
-    await destination.post({
+    const sent = await destination.post({
       markdown: comment ?? '',
       files: [{ data: Buffer.from(bytes), filename: name }],
     });
+
+    // The Chat SDK doesn't surface the Slack file id directly on Attachment,
+    // but the private download URL it does return embeds it in the path.
+    const fileId = sent.attachments
+      .map((attachment) => /(F[A-Z0-9]{6,})/.exec(attachment.url ?? '')?.[1])
+      .find((id) => id !== undefined);
 
     return {
       success: true,
       filename: name,
       path,
-      message: target
-        ? `Uploaded ${name} to ${resolved.type} ${resolved.id}.`
-        : `Uploaded ${name} to this Slack thread.`,
+      fileId,
+      message: `Uploaded ${name} to ${target ? `${resolved.type} ${resolved.id}` : 'this Slack thread'}${fileId ? ` (file id: ${fileId}, use it with get_slack_file or embed it in a canvas)` : ''}.`,
     };
   },
 });

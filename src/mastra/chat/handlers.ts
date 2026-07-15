@@ -5,30 +5,38 @@ import { attachments } from './attachments';
 import { slack } from './client';
 import { handleCommand } from './commands';
 import { rawText, withoutLeadingMentions } from './message';
+import { withStatus } from './reactions';
 import { threadState } from './state';
 
 type DefaultHandler = (thread: Thread, message: Message) => Promise<void>;
 
-const actionToken = z.looseObject({
+const actionTokenSchema = z.looseObject({
   action_token: z.string().min(1).optional(),
 });
 
-async function captureSearchToken(thread: Thread, raw: unknown): Promise<void> {
-  const parsed = actionToken.safeParse(raw);
+async function captureSearchToken({
+  raw,
+  thread,
+}: {
+  raw: unknown;
+  thread: Thread;
+}): Promise<void> {
+  const parsed = actionTokenSchema.safeParse(raw);
   const searchToken = parsed.success ? parsed.data.action_token : undefined;
   if (searchToken) {
     await thread.setState({ searchToken });
   }
 }
 
-function shouldIgnore(message: Message): boolean {
-  if (
+function isFromBot(message: Message): boolean {
+  return (
     message.author.isBot === true ||
     message.author.userId === 'USLACKBOT' ||
     message.author.isMe === true
-  ) {
-    return true;
-  }
+  );
+}
+
+function isComment(message: Message): boolean {
   for (const line of rawText(message).split('\n')) {
     if (withoutLeadingMentions(line).trimStart().startsWith('##')) {
       return true;
@@ -37,11 +45,15 @@ function shouldIgnore(message: Message): boolean {
   return false;
 }
 
-async function respond(
-  thread: Thread,
-  message: Message,
-  defaultHandler: DefaultHandler
-): Promise<void> {
+async function runTurn({
+  defaultHandler,
+  message,
+  thread,
+}: {
+  defaultHandler: DefaultHandler;
+  message: Message;
+  thread: Thread;
+}): Promise<void> {
   logger.info('[chat] turn started', {
     threadId: thread.id,
     author: message.author.userName,
@@ -54,7 +66,10 @@ async function respond(
     text: message.text,
   });
 
-  await defaultHandler(thread, attachments(message));
+  await withStatus({
+    message,
+    run: () => defaultHandler(thread, attachments(message)),
+  });
 }
 
 export async function onMention(
@@ -62,17 +77,17 @@ export async function onMention(
   message: Message,
   defaultHandler: DefaultHandler
 ): Promise<void> {
-  await captureSearchToken(thread, message.raw);
-  if (shouldIgnore(message)) {
+  await captureSearchToken({ raw: message.raw, thread });
+  if (isFromBot(message)) {
     return;
   }
   if (slack.decodeThreadId(message.threadId).threadTs === message.id) {
     await thread.setState({ respondOnThreadMessages: true });
   }
-  if (await handleCommand(thread, message)) {
+  if (await handleCommand({ message, thread })) {
     return;
   }
-  await respond(thread, message, defaultHandler);
+  await runTurn({ defaultHandler, message, thread });
 }
 
 export async function onSubscribedMessage(
@@ -80,8 +95,8 @@ export async function onSubscribedMessage(
   message: Message,
   defaultHandler: DefaultHandler
 ): Promise<void> {
-  await captureSearchToken(thread, message.raw);
-  if (shouldIgnore(message)) {
+  await captureSearchToken({ raw: message.raw, thread });
+  if (isFromBot(message) || isComment(message)) {
     return;
   }
   const state = await threadState(thread);
@@ -89,14 +104,14 @@ export async function onSubscribedMessage(
   if (!(isFollowingThread || message.isMention)) {
     return;
   }
-  if (await handleCommand(thread, message)) {
+  if (await handleCommand({ message, thread })) {
     return;
   }
   if (!isFollowingThread) {
     // Force history backfill for one-off mid-thread mentions that Mastra already marked subscribed.
     await thread.unsubscribe().catch(() => undefined);
   }
-  await respond(thread, message, defaultHandler);
+  await runTurn({ defaultHandler, message, thread });
 }
 
 export async function onDirectMessage(
@@ -104,12 +119,12 @@ export async function onDirectMessage(
   message: Message,
   defaultHandler: DefaultHandler
 ): Promise<void> {
-  await captureSearchToken(thread, message.raw);
-  if (shouldIgnore(message)) {
+  await captureSearchToken({ raw: message.raw, thread });
+  if (isFromBot(message)) {
     return;
   }
-  if (await handleCommand(thread, message)) {
+  if (await handleCommand({ message, thread })) {
     return;
   }
-  await respond(thread, message, defaultHandler);
+  await runTurn({ defaultHandler, message, thread });
 }

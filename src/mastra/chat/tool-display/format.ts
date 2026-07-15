@@ -14,11 +14,15 @@ export function codeBlock(value: string): string {
   return `${fence}\n${value}\n${fence}`;
 }
 
-export function format(
-  value: unknown,
-  max: number,
-  style: FormatStyle = 'block'
-): string {
+export function format({
+  max,
+  style = 'block',
+  value,
+}: {
+  max: number;
+  style?: FormatStyle;
+  value: unknown;
+}): string {
   const output = (
     isRecord(value)
       ? Object.entries(value)
@@ -60,12 +64,15 @@ export function inputValue(event: ToolDisplayEvent): unknown {
   }
 }
 
-export function formatInput(
-  event: ToolDisplayEvent,
-  style: FormatStyle = 'block'
-): string {
+export function formatInput({
+  event,
+  style = 'block',
+}: {
+  event: ToolDisplayEvent;
+  style?: FormatStyle;
+}): string {
   const max = style === 'compact' ? config.maxSummary : config.maxDetails;
-  const rendered = format(inputValue(event), max, style);
+  const rendered = format({ max, style, value: inputValue(event) });
   if (rendered) {
     return rendered;
   }
@@ -83,18 +90,18 @@ export function formatResult(event: ToolDisplayEvent): {
   const failed =
     ('isError' in event && event.isError) ||
     (isRecord(result) && result.success === false);
-  const output = format(
-    isRecord(result)
+  const output = format({
+    max: config.maxOutput,
+    value: isRecord(result)
       ? (result.text ??
-          result.message ??
-          result.output ??
-          result.stdout ??
-          result.stderr ??
-          result.error ??
-          result)
+        result.message ??
+        result.output ??
+        result.stdout ??
+        result.stderr ??
+        result.error ??
+        result)
       : result,
-    config.maxOutput
-  );
+  });
   return { failed: !!failed, output };
 }
 

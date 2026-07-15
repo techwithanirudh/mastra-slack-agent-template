@@ -2,7 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { generateImage } from 'ai';
 import { z } from 'zod';
 import { images } from '../providers';
-import { resolveE2BSandbox } from '../workspace';
+import { getSandbox } from '../workspace';
 import { p } from '../workspace/path';
 
 export const generateImageTool = createTool({
@@ -33,7 +33,7 @@ export const generateImageTool = createTool({
     if (!context?.requestContext) {
       throw new Error('No workspace context.');
     }
-    const sandbox = await resolveE2BSandbox(context.requestContext);
+    const sandbox = await getSandbox(context.requestContext);
     if (!sandbox) {
       throw new Error('No sandbox available.');
     }

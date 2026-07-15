@@ -1,9 +1,54 @@
 {
-  "studio-thread": {
+  "studio-safe": {
     "channel": {
+      "platform": "studio",
+      "eventType": "studio-safe",
+      "isDM": false,
+      "threadId": "studio-safe-thread",
+      "channelId": "studio-safe-channel",
+      "messageId": "studio-safe-message",
+      "userId": "studio-user",
+      "userName": "Studio User",
+      "botUserId": "studio-bot",
+      "botUserName": "Studio Bot"
+    }
+  },
+  "studio-workspace": {
+    "channel": {
+      "platform": "studio",
+      "eventType": "studio-workspace",
+      "isDM": false,
+      "threadId": "studio-workspace-thread",
+      "channelId": "studio-workspace-channel",
+      "messageId": "studio-workspace-message",
+      "userId": "studio-user",
+      "userName": "Studio User",
+      "botUserId": "studio-bot",
+      "botUserName": "Studio Bot"
+    }
+  },
+  "slack-thread-smoke-posts-to-slack": {
+    "channel": {
+      "platform": "slack",
+      "eventType": "studio-slack-thread-smoke",
+      "isDM": false,
       "threadId": "1783103172.405119",
       "channelId": "C0A3F6W44EP",
-      "platform": "studio"
+      "messageId": "1783103172.405119",
+      "userId": "studio-user",
+      "userName": "Studio User"
+    }
+  },
+  "slack-dm-smoke-posts-to-slack": {
+    "channel": {
+      "platform": "slack",
+      "eventType": "studio-slack-dm-smoke",
+      "isDM": true,
+      "threadId": "1783103172.405119",
+      "channelId": "D0A3F6W44EP",
+      "messageId": "1783103172.405119",
+      "userId": "studio-user",
+      "userName": "Studio User"
     }
   }
 }

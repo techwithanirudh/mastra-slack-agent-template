@@ -17,9 +17,15 @@ export const toolDisplay: ToolDisplayFn = (event) => {
   const id = event.toolCallId;
   const title = label(event.displayName || event.toolName);
 
+  // 'approval' is unreachable here: with streaming: true, Mastra's streaming
+  // driver never calls toolDisplayFn for tool-call-approval chunks, it always
+  // posts its own built-in Approve/Deny card directly (confirmed by reading
+  // the compiled runStreamingDriver, which checks `if (toolDisplayFn)` for
+  // tool-call/tool-result/tool-error but has no such check on that branch).
+
   if (event.kind === 'running') {
     return taskUpdate({
-      details: subagentPrompt(event) ?? formatInput(event),
+      details: subagentPrompt(event) ?? formatInput({ event }),
       id,
       status: 'in_progress',
       title,
@@ -39,7 +45,7 @@ export const toolDisplay: ToolDisplayFn = (event) => {
   if (event.kind === 'error') {
     return taskUpdate({
       id,
-      output: `*Error*:\n${format(event.errorText, config.maxOutput)}`,
+      output: `*Error*:\n${format({ max: config.maxOutput, value: event.errorText })}`,
       status: 'error',
       title,
     });

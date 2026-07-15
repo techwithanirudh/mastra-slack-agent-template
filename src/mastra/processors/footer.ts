@@ -1,11 +1,11 @@
 import type {
+  ProcessInputStepArgs,
   ProcessOutputResultArgs,
   ProcessOutputStepArgs,
 } from '@mastra/core/processors';
 import { Card, CardText } from 'chat';
 import { slack } from '../chat/client';
 import { agent as agentConfig } from '../config';
-import { clip } from '../lib/clip';
 import { channelContext } from '../lib/context';
 import { logger } from '../lib/logger';
 
@@ -14,42 +14,32 @@ const compactTokens = new Intl.NumberFormat('en', {
   notation: 'compact',
 });
 
-export const turns = {
-  id: 'turns',
-  name: 'Turn Logging',
+export const footer = {
+  id: 'footer',
+  name: 'Completion Footer',
+  description: 'Logs turn usage and posts the completion footer.',
+  // processInputStep/processOutputStep bracket a single step's LLM call
+  // (the model request/response, not the tool execution before the next
+  // step). Accumulating just that gap gives genuine generation speed;
+  // timing from the turn's first step to processOutputResult instead would
+  // include every step's tool/sandbox/approval wall-clock time too, making
+  // heavier turns falsely look slower than a quick reply with no tool calls.
+  processInputStep(args: ProcessInputStepArgs) {
+    args.state.stepStart = Date.now();
+  },
   processOutputStep(args: ProcessOutputStepArgs) {
-    const { threadId } = channelContext(args.requestContext);
-    for (const call of args.toolCalls ?? []) {
-      logger.info('[tool] call', {
-        threadId,
-        tool: call.toolName,
-        args: clip(call.args),
-      });
+    const { stepStart } = args.state;
+    if (typeof stepStart === 'number') {
+      const { llmTimeMs } = args.state;
+      args.state.llmTimeMs =
+        (typeof llmTimeMs === 'number' ? llmTimeMs : 0) +
+        (Date.now() - stepStart);
     }
-    args.state.startTime ??= Date.now();
     return args.messages;
   },
   async processOutputResult(args: ProcessOutputResultArgs) {
     const ctx = channelContext(args.requestContext);
     const { threadId } = ctx;
-
-    for (const step of args.result.steps) {
-      for (const { payload } of step.toolResults ?? []) {
-        if (payload.isError) {
-          logger.warn('[tool] error', {
-            threadId,
-            tool: payload.toolName,
-            error: clip(payload.result),
-          });
-        } else {
-          logger.info('[tool] result', {
-            threadId,
-            tool: payload.toolName,
-            output: clip(payload.result),
-          });
-        }
-      }
-    }
 
     const { usage } = args.result;
     const inputTokens = usage?.inputTokens ?? 0;
@@ -65,7 +55,7 @@ export const turns = {
     });
 
     const hasTextResponse = args.result.text.trim().length > 0;
-    const silentTools = new Set(['skip', 'add_reaction', 'remove_reaction']);
+    const silentTools = new Set(['skip', 'react']);
     const hasVisibleToolCall = args.result.steps.some((step) =>
       (step.toolResults ?? []).some(
         ({ payload }) => !silentTools.has(payload.toolName)
@@ -86,9 +76,9 @@ export const turns = {
       parts.push(`${compactTokens.format(totalTokens)} tok`);
     }
 
-    const { startTime } = args.state;
-    if (typeof startTime === 'number') {
-      const elapsedSec = (Date.now() - startTime) / 1000;
+    const { llmTimeMs } = args.state;
+    if (typeof llmTimeMs === 'number') {
+      const elapsedSec = llmTimeMs / 1000;
       if (elapsedSec > 0 && outputTokens > 0) {
         parts.push(`⚡ ${(outputTokens / elapsedSec).toFixed(1)} tok/s`);
       }

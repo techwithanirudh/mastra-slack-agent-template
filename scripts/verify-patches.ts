@@ -1,41 +1,60 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const CHECKS = [
-  {
-    file: 'node_modules/@mastra/core/dist/chunk-JGDMZZAO.js',
-    signature: 'part.type === "file"',
-  },
-  {
-    file: 'node_modules/@mastra/core/dist/chunk-EVJSSG7F.cjs',
-    signature: 'part.type === "file"',
-  },
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const DIST = join(ROOT, 'node_modules/@mastra/core/dist');
+const PATCH_FILE = 'patches/@mastra+core@1.50.1.patch';
+
+const SIGNATURES = [
+  'invocation.result && typeof invocation.result === "object" && typeof invocation.result.data === "string" && typeof invocation.result.mediaType === "string"',
+  'part.type === "file"',
 ];
 
-let ok = true;
-for (const { file, signature } of CHECKS) {
-  if (!existsSync(file)) {
-    console.error(
-      `[verify-patches] Missing file: ${file} (chunk names are content-hashed — this usually means @mastra/core's version changed and the hash moved).`
-    );
-    ok = false;
-    continue;
-  }
-  if (!readFileSync(file, 'utf8').includes(signature)) {
-    console.error(
-      `[verify-patches] Patch not applied to ${file} — expected to find "${signature}".`
-    );
-    ok = false;
-  }
-}
-
-if (!ok) {
-  console.error(
-    '\n[verify-patches] patches/@mastra+core@1.50.0.patch did not apply.\n' +
-      "This usually means @mastra/core's installed version no longer matches the patchedDependencies key in package.json.\n" +
-      'See TODO.md ("read_file tool-result images never reach the model") for what this patch fixes and why.\n' +
-      'Fix: re-derive the patch against the new version (fetch a pristine tarball, reapply the same edits, regenerate the diff), then update the patchedDependencies key.\n'
-  );
+function fail(message: string): never {
+  console.error(`\n[verify-patches] ${message}\n`);
   process.exit(1);
 }
 
-console.log('[verify-patches] @mastra/core patch verified OK.');
+if (!existsSync(DIST)) {
+  fail(
+    `${DIST} does not exist. @mastra/core did not install correctly, run bun install again.`
+  );
+}
+
+const patchedByExtension: Record<'.js' | '.cjs', string[]> = {
+  '.js': [],
+  '.cjs': [],
+};
+
+for (const entry of readdirSync(DIST)) {
+  let extension: '.js' | '.cjs' | undefined;
+  if (entry.endsWith('.cjs')) {
+    extension = '.cjs';
+  } else if (entry.endsWith('.js')) {
+    extension = '.js';
+  }
+  if (!extension) {
+    continue;
+  }
+  const source = readFileSync(join(DIST, entry), 'utf8');
+  if (SIGNATURES.every((signature) => source.includes(signature))) {
+    patchedByExtension[extension].push(entry);
+  }
+}
+
+if (
+  patchedByExtension['.js'].length === 0 ||
+  patchedByExtension['.cjs'].length === 0
+) {
+  fail(
+    `@mastra/core patch (${PATCH_FILE}) did not apply. This usually means the installed ` +
+      '@mastra/core version no longer matches the patchedDependencies key in package.json. ' +
+      `Fix: re-derive ${PATCH_FILE} against the new version, then update patchedDependencies.`
+  );
+}
+
+console.log(
+  '[verify-patches] @mastra/core patch verified OK.',
+  patchedByExtension
+);

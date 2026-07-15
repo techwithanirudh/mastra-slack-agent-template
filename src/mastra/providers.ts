@@ -2,44 +2,49 @@ import type { ModelWithRetries } from '@mastra/core/agent';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { env } from '@/env';
 
-type ModelConfig = ModelWithRetries['model'] & { id: `${string}/${string}` };
-
-function openrouter(id: `${string}/${string}`): ModelConfig {
-  return {
-    id: `openrouter/${id}`,
-    apiKey: env.OPENROUTER_API_KEY,
-    url: env.OPENROUTER_BASE_URL,
-  };
-}
+const openrouterOptions = {
+  provider: { only: ['DigitalOcean'] },
+};
 
 export const orchestrator: ModelWithRetries[] = [
   {
-    model: openrouter('minimax/minimax-m3'),
+    model: 'openrouter/minimax/minimax-m3',
     maxRetries: 3,
     providerOptions: {
-      openrouter: { reasoningEffort: 'medium' },
+      openrouter: { ...openrouterOptions, reasoningEffort: 'medium' },
     },
   },
 ];
 
 export const summarizer: ModelWithRetries[] = [
   {
-    model: openrouter('google/gemini-3.1-flash-lite'),
+    model: 'openrouter/google/gemini-3.1-flash-lite',
     maxRetries: 3,
+    providerOptions: { openrouter: openrouterOptions },
   },
 ];
 
 export const scout: ModelWithRetries[] = [
   {
-    model: openrouter('deepseek/deepseek-v4-flash'),
+    model: 'openrouter/deepseek/deepseek-v4-flash',
     maxRetries: 3,
+    providerOptions: { openrouter: openrouterOptions },
   },
 ];
 
 export const explorer: ModelWithRetries[] = [
   {
-    model: openrouter('minimax/minimax-m3'),
+    model: 'openrouter/minimax/minimax-m3',
     maxRetries: 3,
+    providerOptions: { openrouter: openrouterOptions },
+  },
+];
+
+export const executor: ModelWithRetries[] = [
+  {
+    model: 'openrouter/moonshotai/kimi-k2.7-code',
+    maxRetries: 3,
+    providerOptions: { openrouter: openrouterOptions },
   },
 ];
 

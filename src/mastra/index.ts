@@ -8,7 +8,10 @@ import {
 } from '@mastra/observability';
 import { PostgresStore } from '@mastra/pg';
 import { env } from '@/env';
+import { executeAgent as execute } from './agents/execute';
+import { exploreAgent as explore } from './agents/explore';
 import orchestrator from './agents/orchestrator';
+import { researchAgent as research } from './agents/research';
 import { summarizer } from './agents/summarizer';
 import { registerEvents } from './chat/events';
 import { setChat } from './chat/instance';
@@ -22,7 +25,15 @@ process.on('uncaughtException', (error: Error) => {
 });
 
 export const mastra = new Mastra({
-  agents: { orchestrator, summarizer },
+  agents: { orchestrator, summarizer, research, explore, execute },
+  schedules: {
+    prepare: async ({ mastra: runtime, schedule }) => {
+      const current = await runtime.schedules.get(schedule.id);
+      if (current?.metadata?.kind === 'wait') {
+        await runtime.schedules.delete(schedule.id);
+      }
+    },
+  },
   storage: new MastraCompositeStore({
     id: 'composite-storage',
     default: new PostgresStore({

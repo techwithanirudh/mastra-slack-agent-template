@@ -18,7 +18,7 @@ export const readConversationHistoryTool = createTool({
       .string()
       .optional()
       .describe('Thread id (slack:C...:ts). Defaults to the current thread.'),
-    limit: z.number().int().min(1).max(200).default(40),
+    limit: z.coerce.number().int().min(1).max(200).default(40),
     cursor: z
       .string()
       .optional()

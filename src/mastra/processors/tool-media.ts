@@ -6,8 +6,8 @@ interface MediaPart {
   type: 'media';
 }
 
-export const relocateToolResultImages: CompatRule = {
-  name: 'relocate-tool-result-images',
+export const moveToolImages: CompatRule = {
+  name: 'move-tool-images',
   applyToPrompt({ prompt }) {
     let changed = false;
     const next: typeof prompt = [];
@@ -53,11 +53,13 @@ export const relocateToolResultImages: CompatRule = {
         role: 'user',
         content: [
           { type: 'text', text: 'Attached media from tool result:' },
-          ...images.map((image) => ({
-            type: 'file' as const,
-            data: image.data,
-            mediaType: image.mediaType,
-          })),
+          ...images.map(
+            (image): { type: 'file'; data: string; mediaType: string } => ({
+              type: 'file',
+              data: image.data,
+              mediaType: image.mediaType,
+            })
+          ),
         ],
       });
     }
